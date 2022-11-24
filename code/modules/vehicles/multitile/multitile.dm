@@ -65,6 +65,8 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 	req_one_access = list() //List of accesses you need one of to enter
 	locked = TRUE //Whether we should skip access checking for entry
 
+	// ammo loader for vehicles that need it
+	var/obj/structure/weapons_loader/Loader
 	// List of all hardpoints attached to the vehicle
 	var/list/hardpoints = list()
 	//List of all hardpoints you can attach to this vehicle
@@ -194,6 +196,8 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 /obj/vehicle/multitile/Destroy()
 	if(!QDELETED(interior))
 		QDEL_NULL(interior)
+	if(Loader)
+		QDEL_NULL(Loader)
 
 	QDEL_NULL_LIST(hardpoints)
 
@@ -252,17 +256,19 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 /obj/vehicle/multitile/examine(var/mob/user)
 	..()
 
-	for(var/obj/item/hardpoint/H in hardpoints)
-		to_chat(user, "There is \a [H] module installed.")
-		H.examine(user, TRUE)
+	var/msg = "[icon2html(src, user)] That's \a [name].\n"
+	msg += desc
 	if(clamped)
-		to_chat(user, "There is a vehicle clamp attached.")
+		msg += "\nThere is a vehicle clamp attached."
+	for(var/obj/item/hardpoint/H in hardpoints)
+		msg += H.examine_hardpoint(user)
 	if(isXeno(user) && interior)
 		var/passengers_amount = interior.passengers_taken_slots
 		for(var/datum/role_reserved_slots/RRS in interior.role_reserved_slots)
 			passengers_amount += RRS.taken
 		if(passengers_amount > 0)
-			to_chat(user, "You can sense approximately [passengers_amount] hosts inside.")
+			msg += "You can sense approximately [passengers_amount] hosts inside."
+	to_chat(user, msg)
 
 /obj/vehicle/multitile/proc/load_hardpoints()
 	return

@@ -1,10 +1,10 @@
-/obj/item/hardpoint/support/weapons_sensor
-	name = "Integrated Weapons Sensor Array"
-	desc = "Improves the accuracy and fire rate of all onboard weapons"
+/obj/item/hardpoint/support/weapons_boost
+	name = "Armaments Systems Boost Module"
+	desc = "Tank's support module. Armaments Systems Boost Module consists of two main components: integrated weapons sensor array which eases target tracking and improves the accuracy, and upgraded ammunition loading mechanism which increases fire rate of all installed armaments."
 
-	icon_state = "warray"
+	icon_state = "weapons_boost"
 	disp_icon = "tank"
-	disp_icon_state = "warray"
+	disp_icon_state = "weapons_boost"
 
 	health = 250
 

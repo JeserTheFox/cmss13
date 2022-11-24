@@ -37,8 +37,8 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 	luminosity = 7
 
 	hardpoints_allowed = list(
-		/obj/item/hardpoint/primary/dualcannon,
-		/obj/item/hardpoint/secondary/frontalcannon,
+		/obj/item/hardpoint/primary/plasma_cannon,
+		/obj/item/hardpoint/secondary/re700,
 		/obj/item/hardpoint/support/flare_launcher,
 		/obj/item/hardpoint/locomotion/apc_wheels,
 	)
@@ -109,6 +109,8 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
 			/obj/vehicle/multitile/proc/name_vehicle
+			/obj/vehicle/multitile/proc/switch_ammo_type,
+			/obj/vehicle/multitile/proc/unload_active_hardpoint,
 		))
 
 	else if(seat == VEHICLE_SUPPORT_GUNNER_ONE || seat == VEHICLE_SUPPORT_GUNNER_TWO)
@@ -135,6 +137,8 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
 			/obj/vehicle/multitile/proc/name_vehicle,
+			/obj/vehicle/multitile/proc/switch_ammo_type,
+			/obj/vehicle/multitile/proc/unload_active_hardpoint,
 		))
 	else if(seat == VEHICLE_SUPPORT_GUNNER_ONE || seat == VEHICLE_SUPPORT_GUNNER_TWO)
 		remove_verb(M.client, list(
@@ -171,8 +175,8 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 	FPW.dir = turn(dir, -90)
 	FPW.origins = list(-2, 0)
 
-	add_hardpoint(new /obj/item/hardpoint/primary/dualcannon)
-	add_hardpoint(new /obj/item/hardpoint/secondary/frontalcannon)
+	add_hardpoint(new /obj/item/hardpoint/primary/plasma_cannon)
+	add_hardpoint(new /obj/item/hardpoint/secondary/re700)
 	add_hardpoint(new /obj/item/hardpoint/support/flare_launcher)
 	add_hardpoint(new /obj/item/hardpoint/locomotion/apc_wheels)
 
@@ -189,8 +193,8 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 	FPW.dir = turn(dir, -90)
 	FPW.origins = list(-2, 0)
 
-	add_hardpoint(new /obj/item/hardpoint/primary/dualcannon)
-	add_hardpoint(new /obj/item/hardpoint/secondary/frontalcannon)
+	add_hardpoint(new /obj/item/hardpoint/primary/plasma_cannon)
+	add_hardpoint(new /obj/item/hardpoint/secondary/re700)
 	add_hardpoint(new /obj/item/hardpoint/support/flare_launcher)
 	add_hardpoint(new /obj/item/hardpoint/locomotion/apc_wheels)
 

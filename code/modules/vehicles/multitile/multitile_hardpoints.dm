@@ -29,7 +29,7 @@
 			var/obj/item/hardpoint/holder/HP = H
 			if(HP.hardpoints)
 				hps += HP.get_hardpoints_with_ammo(seat)
-		if(!H.ammo || seat && seat != H.allowed_seat)
+		if(!H.backup_ammo || seat && seat != H.allowed_seat)
 			continue
 		hps += H
 	return hps
@@ -205,6 +205,7 @@
 	HP.owner = src
 	HP.forceMove(src)
 	hardpoints += HP
+	sort_hardpoints()
 
 	HP.on_install(src)
 	HP.rotate(turning_angle(HP.dir, dir))
@@ -231,6 +232,33 @@
 		qdel(old)
 
 	update_icon()
+
+//This proc sorts list/hardpoints by specific order, which is:
+/*
+PRIMARY
+SECONDARY
+HOLDER(Turret)
+SUPPORT
+ARMOR
+LOCOMOTION
+*/
+//it is done to guarantee a consistent listing of them for VCs in possible menus and windows
+/obj/vehicle/multitile/proc/sort_hardpoints()
+	var/list/sorted_hardpoints = list(
+						HDPT_PRIMARY = null,
+						HDPT_SECONDARY = null,
+						HDPT_TURRET = null,
+						HDPT_SUPPORT = null,
+						HDPT_ARMOR = null,
+						HDPT_TREADS = null,
+						HDPT_WHEELS = null,
+						)
+	for(var/obj/item/hardpoint/HP in hardpoints)
+		sorted_hardpoints[HP.slot] = HP
+	hardpoints.Cut()
+	for(var/slot in sorted_hardpoints)
+		hardpoints += sorted_hardpoints[slot]
+
 
 //proc that fires non selected weaponry
 /obj/vehicle/multitile/proc/shoot_other_weapon(var/mob/living/carbon/human/M, var/seat, var/atom/A)
@@ -275,3 +303,113 @@
 		HP.activate(M, A)
 		break
 	return
+
+//proc that handles unloading hardpoints.
+//HP is sent if we unload currently selected hardpoints's current magazine in var/ammo via unload_active_hardpoint() verb and all checks are done there
+//otherwise we unload via weapons loader and have full info on all mags and their ammo count and can choose to unload any one of them.
+/obj/vehicle/multitile/proc/handle_hardpoint_unload(var/mob/living/carbon/human/user, var/obj/item/hardpoint/HP)
+
+	if(!skillcheck(user, SKILL_VEHICLE, SKILL_VEHICLE_CREWMAN))
+		to_chat(user, SPAN_WARNING("You have no idea how to operate this thing!"))
+		return
+
+	//first, we check for quick unload
+	if(HP)
+		if(!length(HP.backup_ammo))
+			to_chat(user, SPAN_WARNING("ERROR. MIXED AMMO WAS NOT PROPERlY INITIALIZED. TELL A DEV."))
+			return
+
+		if(!HP.ammo)
+			to_chat(user, SPAN_WARNING("No ammunition is currently selected."))
+			return
+
+		to_chat(user, SPAN_NOTICE("You begin unloading \the [HP.ammo] from \the [HP]."))
+
+		var/obj/item/ammo_magazine/hardpoint/mag = HP.ammo
+
+		if(HP.next_use < world.time + 2 SECONDS)
+			HP.next_use = world.time + 2 SECONDS
+
+		sleep(1 SECONDS)
+
+		//mag disappeared somehow
+		if(HP.ammo != mag)
+			return
+
+		//we move magazine in ammo to weapons_loader location
+		mag.update_icon()
+		mag.forceMove(get_turf(Loader))
+		HP.backup_ammo[mag.ammo_tag].Remove(mag)
+		HP.ammo = null
+
+		to_chat(user, SPAN_NOTICE("You finish unloading \the [mag] from \the [HP]."))
+		playsound(loc, 'sound/machines/hydraulics_3.ogg', 50)
+
+		HP.reload(user, mag.ammo_tag)
+
+	//if we are here, then we assume, that we are unloading from reloader and checked skill already
+	else
+		var/list/hps = get_hardpoints_with_ammo()
+
+		if(!LAZYLEN(hps))
+			to_chat(user, SPAN_WARNING("None of the hardpoints can be reloaded!"))
+			return
+
+		var/choice = tgui_input_list(usr, "Select a hardpoint", "Hardpoint Menu", (hps + "Cancel"))
+		if(choice == "Cancel")
+			return
+
+		HP = choice
+
+		// If someone removed the hardpoint while their dialogue was open or something
+		if(QDELETED(HP))
+			to_chat(user, SPAN_WARNING("Error! Module not found!"))
+			return
+
+		if(!length(HP.backup_ammo))
+			to_chat(user, SPAN_WARNING("ERROR. MIXED AMMO WAS NOT PROPERlY INITIALIZED. TELL A DEV."))
+			return
+
+		if(HP.get_total_mags() <= 0)
+			to_chat(user, SPAN_WARNING("\The [HP] has no remaining backup magazines!"))
+			return
+
+		var/obj/item/ammo_magazine/hardpoint/mag
+
+		var/list/mag_choices = list()
+		for(var/ammo_type in HP.backup_ammo)
+			var/i = 1
+			for(mag in HP.backup_ammo[ammo_type])
+				if(HP.ammo == mag)
+					mag_choices["[i]. [ammo_type]: [mag.current_rounds]/[mag.max_rounds] (CURRENT)"] = mag
+				else
+					mag_choices["[i]. [ammo_type]: [mag.current_rounds]/[mag.max_rounds]"] = mag
+				i++
+
+		choice = tgui_input_list(usr, "Select ammo to unload:", "Ammunition Menu", (mag_choices + "Cancel"))
+		if(choice == "Cancel")
+			return
+
+		mag = mag_choices[choice]
+
+		to_chat(user, SPAN_NOTICE("You begin unloading \the [mag]."))
+
+		if(HP.next_use < world.time + 2 SECONDS)
+			HP.next_use = world.time + 2 SECONDS
+
+		if(!do_after(user, 1 SECONDS, INTERRUPT_ALL, BUSY_ICON_FRIENDLY))
+			to_chat(user, SPAN_WARNING("Something interrupted you while unloading \the [mag]."))
+			return
+
+		//we move magazine in ammo to weapons_loader location
+		mag.update_icon()
+		mag.forceMove(get_turf(Loader))
+		HP.backup_ammo[mag.ammo_tag].Remove(mag)
+
+		to_chat(user, SPAN_NOTICE("You finish unloading \the [mag] from \the [HP]."))
+		playsound(loc, 'sound/machines/hydraulics_3.ogg', 50)
+
+		//the mag we unloaded is also our currently selected mag, so we need to reset and replace it if possible
+		if(HP.ammo == mag)
+			HP.ammo = null
+			HP.reload(user, mag.ammo_tag)

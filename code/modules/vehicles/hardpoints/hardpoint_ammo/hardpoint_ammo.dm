@@ -1,6 +1,25 @@
 //Special ammo magazines for hardpoint modules. Some aren't here since you can use normal magazines on them
 /obj/item/ammo_magazine/hardpoint
+	icon = 'icons/obj/items/weapons/guns/ammo_vehicle.dmi'
 	flags_magazine = 0 //No refilling
+
+	w_class = SIZE_LARGE
+
+	//ammo tag that helps identifying it in the hardpoints
+	var/ammo_tag = "Generic Ammo"
+	var/info
+
+/obj/item/ammo_magazine/hardpoint/Initialize(mapload, spawn_empty)
+	. = ..()
+	update_icon()
+
+/obj/item/ammo_magazine/hardpoint/update_icon()
+	icon_state = "[initial(icon_state)]_2"
+	if(current_rounds < max_rounds * 0.7)
+		if(current_rounds > 0)
+			icon_state = "[initial(icon_state)]_1"
+		else
+			icon_state = "[initial(icon_state)]_0"
 
 /obj/item/ammo_magazine/hardpoint/attackby(var/obj/item/O, var/mob/user)
 	if(O.type != type)

@@ -41,16 +41,16 @@
 	// Rest (all the guns) is handled by the tank turret hardpoint
 	hardpoints_allowed = list(
 		/obj/item/hardpoint/holder/tank_turret,
-		/obj/item/hardpoint/support/weapons_sensor,
+		/obj/item/hardpoint/support/weapons_boost,
 		/obj/item/hardpoint/support/overdrive_enhancer,
-		/obj/item/hardpoint/support/artillery_module,
+		/obj/item/hardpoint/support/advanced_optics,
 		/obj/item/hardpoint/armor/ballistic,
 		/obj/item/hardpoint/armor/caustic,
 		/obj/item/hardpoint/armor/concussive,
 		/obj/item/hardpoint/armor/paladin,
 		/obj/item/hardpoint/armor/snowplow,
 		/obj/item/hardpoint/locomotion/treads,
-		/obj/item/hardpoint/locomotion/treads/robust
+		/obj/item/hardpoint/locomotion/treads/reinforced
 	)
 
 	seats = list(
@@ -105,6 +105,8 @@
 		/obj/vehicle/multitile/proc/get_status_info,
 		/obj/vehicle/multitile/proc/open_controls_guide,
 		/obj/vehicle/multitile/proc/name_vehicle,
+		/obj/vehicle/multitile/proc/switch_ammo_type,
+		/obj/vehicle/multitile/proc/unload_active_hardpoint,
 	))
 	if(seat == VEHICLE_DRIVER)
 		add_verb(M.client, list(
@@ -127,6 +129,8 @@
 		/obj/vehicle/multitile/proc/open_controls_guide,
 		/obj/vehicle/multitile/proc/name_vehicle,
 		/obj/vehicle/multitile/proc/switch_hardpoint,
+		/obj/vehicle/multitile/proc/switch_ammo_type,
+		/obj/vehicle/multitile/proc/unload_active_hardpoint,
 	))
 	if(seat == VEHICLE_DRIVER)
 		remove_verb(M.client, list(
@@ -180,8 +184,8 @@
 	if(!T)
 		return
 
-	T.add_hardpoint(new /obj/item/hardpoint/primary/cannon)
-	T.add_hardpoint(new /obj/item/hardpoint/secondary/m56cupola)
+	T.add_hardpoint(new /obj/item/hardpoint/primary/ltb)
+	T.add_hardpoint(new /obj/item/hardpoint/secondary/m56t)
 
 //Tank spawner that spawns in a tank that's NOT eight kinds of awful, mostly for testing purposes
 /obj/vehicle/multitile/tank/fixed_minigun/load_hardpoints(var/obj/vehicle/multitile/R)
@@ -198,10 +202,10 @@
 	T.add_hardpoint(new /obj/item/hardpoint/primary/minigun)
 	T.add_hardpoint(new /obj/item/hardpoint/secondary/grenade_launcher)
 
-/obj/vehicle/multitile/tank/decrepit/load_hardpoints(var/obj/vehicle/multitile/R)
+/obj/vehicle/multitile/tank/fixed_autocannon/load_hardpoints(var/obj/vehicle/multitile/R)
 	..()
 
-	add_hardpoint(new /obj/item/hardpoint/support/artillery_module)
+	add_hardpoint(new /obj/item/hardpoint/support/advanced_optics)
 	add_hardpoint(new /obj/item/hardpoint/armor/ballistic)
 	add_hardpoint(new /obj/item/hardpoint/locomotion/treads)
 
@@ -209,8 +213,36 @@
 	if(!T)
 		return
 
-	T.add_hardpoint(new /obj/item/hardpoint/primary/cannon)
-	T.add_hardpoint(new /obj/item/hardpoint/secondary/m56cupola)
+	T.add_hardpoint(new /obj/item/hardpoint/primary/autocannon)
+	T.add_hardpoint(new /obj/item/hardpoint/secondary/grenade_launcher)
+
+/obj/vehicle/multitile/tank/fixed_ltb_tow/load_hardpoints(var/obj/vehicle/multitile/R)
+	..()
+
+	add_hardpoint(new /obj/item/hardpoint/support/advanced_optics)
+	add_hardpoint(new /obj/item/hardpoint/armor/ballistic)
+	add_hardpoint(new /obj/item/hardpoint/locomotion/treads)
+
+	var/obj/item/hardpoint/holder/tank_turret/T = locate() in hardpoints
+	if(!T)
+		return
+
+	T.add_hardpoint(new /obj/item/hardpoint/primary/ltb)
+	T.add_hardpoint(new /obj/item/hardpoint/secondary/tow)
+
+/obj/vehicle/multitile/tank/decrepit/load_hardpoints(var/obj/vehicle/multitile/R)
+	..()
+
+	add_hardpoint(new /obj/item/hardpoint/support/advanced_optics)
+	add_hardpoint(new /obj/item/hardpoint/armor/ballistic)
+	add_hardpoint(new /obj/item/hardpoint/locomotion/treads)
+
+	var/obj/item/hardpoint/holder/tank_turret/T = locate() in hardpoints
+	if(!T)
+		return
+
+	T.add_hardpoint(new /obj/item/hardpoint/primary/ltb)
+	T.add_hardpoint(new /obj/item/hardpoint/secondary/m56t)
 
 /obj/vehicle/multitile/tank/decrepit/load_damage(var/obj/vehicle/multitile/R)
 	// once to break the hardpoints

@@ -1,6 +1,6 @@
 /obj/item/hardpoint/locomotion
 	name = "locomotive aid hardpoint"
-	desc = "i help the vehicle move :)"
+	desc = "Something's locomotion module. i help the vehicle move :)"
 
 	damage_multiplier = 0.15
 

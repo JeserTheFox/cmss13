@@ -416,57 +416,59 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 //Not essentials sets but fuck it the code's here
 /obj/effect/essentials_set/tank/ltb
 	spawned_gear_list = list(
-		/obj/item/hardpoint/primary/cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon
+		/obj/item/hardpoint/primary/ltb,
+		/obj/item/ammo_magazine/hardpoint/ltb,
+		/obj/item/ammo_magazine/hardpoint/ltb,
+		/obj/item/ammo_magazine/hardpoint/ltb,
+		/obj/item/ammo_magazine/hardpoint/ltb,
+		/obj/item/ammo_magazine/hardpoint/ltb
 	)
 
-/obj/effect/essentials_set/tank/gatling
+/obj/effect/essentials_set/tank/minigun
 	spawned_gear_list = list(
 		/obj/item/hardpoint/primary/minigun,
-		/obj/item/ammo_magazine/hardpoint/ltaaap_minigun,
-		/obj/item/ammo_magazine/hardpoint/ltaaap_minigun
+		/obj/item/ammo_magazine/hardpoint/minigun,
+		/obj/item/ammo_magazine/hardpoint/minigun,
+		/obj/item/ammo_magazine/hardpoint/minigun
 	)
 
-/obj/effect/essentials_set/tank/dragonflamer
+/obj/effect/essentials_set/tank/dragon_flamer
 	spawned_gear_list = list(
 		/obj/item/hardpoint/primary/flamer,
-		/obj/item/ammo_magazine/hardpoint/primary_flamer,
-		/obj/item/ammo_magazine/hardpoint/primary_flamer,
+		/obj/item/ammo_magazine/hardpoint/dragon_flamer,
+		/obj/item/ammo_magazine/hardpoint/dragon_flamer,
 	)
 
 /obj/effect/essentials_set/tank/autocannon
 	spawned_gear_list = list(
 		/obj/item/hardpoint/primary/autocannon,
-		/obj/item/ammo_magazine/hardpoint/ace_autocannon,
-		/obj/item/ammo_magazine/hardpoint/ace_autocannon,
-		/obj/item/ammo_magazine/hardpoint/ace_autocannon,
-		/obj/item/ammo_magazine/hardpoint/ace_autocannon
+		/obj/item/ammo_magazine/hardpoint/autocannon,
+		/obj/item/ammo_magazine/hardpoint/autocannon,
+		/obj/item/ammo_magazine/hardpoint/autocannon,
+		/obj/item/ammo_magazine/hardpoint/autocannon
 	)
 
-/obj/effect/essentials_set/tank/tankflamer
+/obj/effect/essentials_set/tank/lzrn_flamer
 	spawned_gear_list = list(
-		/obj/item/hardpoint/secondary/small_flamer,
-		/obj/item/ammo_magazine/hardpoint/secondary_flamer
+		/obj/item/hardpoint/secondary/flamer,
+		/obj/item/ammo_magazine/hardpoint/lzrn_flamer,
+		/obj/item/ammo_magazine/hardpoint/lzrn_flamer
 	)
 
 /obj/effect/essentials_set/tank/tow
 	spawned_gear_list = list(
-		/obj/item/hardpoint/secondary/towlauncher,
-		/obj/item/ammo_magazine/hardpoint/towlauncher,
-		/obj/item/ammo_magazine/hardpoint/towlauncher
+		/obj/item/hardpoint/secondary/tow,
+		/obj/item/ammo_magazine/hardpoint/tow,
+		/obj/item/ammo_magazine/hardpoint/tow
 	)
 
-/obj/effect/essentials_set/tank/m56cupola
+/obj/effect/essentials_set/tank/m56t
 	spawned_gear_list = list(
-		/obj/item/hardpoint/secondary/m56cupola,
-		/obj/item/ammo_magazine/hardpoint/m56_cupola
+		/obj/item/hardpoint/secondary/m56t,
+		/obj/item/ammo_magazine/hardpoint/m56t
 	)
 
-/obj/effect/essentials_set/tank/tankgl
+/obj/effect/essentials_set/tank/tank_glauncher
 	spawned_gear_list = list(
 		/obj/item/hardpoint/secondary/grenade_launcher,
 		/obj/item/ammo_magazine/hardpoint/tank_glauncher,
@@ -479,25 +481,27 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 	spawned_gear_list = list(
 		/obj/item/hardpoint/holder/tank_turret,
 		/obj/item/ammo_magazine/hardpoint/turret_smoke,
+		/obj/item/ammo_magazine/hardpoint/turret_smoke,
+		/obj/item/ammo_magazine/hardpoint/turret_smoke,
 		/obj/item/ammo_magazine/hardpoint/turret_smoke
 	)
 
-/obj/effect/essentials_set/apc/dualcannon
+/obj/effect/essentials_set/apc/plasma_cannon
 	spawned_gear_list = list(
-		/obj/item/hardpoint/primary/dualcannon,
-		/obj/item/ammo_magazine/hardpoint/boyars_dualcannon,
-		/obj/item/ammo_magazine/hardpoint/boyars_dualcannon,
-		/obj/item/ammo_magazine/hardpoint/boyars_dualcannon,
-		/obj/item/ammo_magazine/hardpoint/boyars_dualcannon
+		/obj/item/hardpoint/primary/plasma_cannon,
+		/obj/item/ammo_magazine/hardpoint/plasma_cannon,
+		/obj/item/ammo_magazine/hardpoint/plasma_cannon,
+		/obj/item/ammo_magazine/hardpoint/plasma_cannon,
+		/obj/item/ammo_magazine/hardpoint/plasma_cannon
 	)
 
-/obj/effect/essentials_set/apc/frontalcannon
+/obj/effect/essentials_set/apc/re700
 	spawned_gear_list = list(
-		/obj/item/hardpoint/secondary/frontalcannon,
-		/obj/item/ammo_magazine/hardpoint/m56_cupola/frontal_cannon
+		/obj/item/hardpoint/secondary/re700,
+		/obj/item/ammo_magazine/hardpoint/m56t/re700
 	)
 
-/obj/effect/essentials_set/apc/flarelauncher
+/obj/effect/essentials_set/apc/flare_launcher
 	spawned_gear_list = list(
 		/obj/item/hardpoint/support/flare_launcher,
 		/obj/item/ammo_magazine/hardpoint/flare_launcher,

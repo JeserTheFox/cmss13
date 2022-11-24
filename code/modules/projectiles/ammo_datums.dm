@@ -216,6 +216,27 @@
 	var/datum/reagent/napalm/ut/R = new()
 	new /obj/flamer_fire(T, cause_data, R)
 
+//used for ammunition to apply slowdown
+/datum/ammo/proc/shellshock(var/atom/target, var/obj/item/projectile/P, var/effect_level = 1, var/effect_range = 0)
+	if(!target || !P) return
+	for(var/mob/living/carbon/M in range(effect_range, target))
+		//can't shellshock big xenos
+		if(M.mob_size > MOB_SIZE_XENO)
+			continue
+
+		var/msg = "You are suppressed by \the </b>[P.name]</b>!"
+		M.visible_message(SPAN_DANGER("[M] is suppressed by \the [P.name]!"),isXeno(M) ? SPAN_XENODANGER("[msg]"):SPAN_HIGHDANGER("[msg]"))
+
+		shake_camera(M, 1 * effect_level, 2 * effect_level)
+
+		if(isXeno(M))
+			if(M.mob_size >= MOB_SIZE_BIG)
+				return //Big xenos are not affected.
+			M.apply_effect(effect_level, SLOW)
+		else
+			M.apply_stamina_damage(P.ammo.damage * effect_level / 2, P.def_zone, ARMOR_BULLET)
+
+
 
 /*
 //======
@@ -2070,6 +2091,399 @@
 /datum/ammo/rocket/custom/do_at_max_range(obj/item/projectile/P)
 	prime(null, P)
 
+//================================================
+					Vehicle Ammo
+//================================================
+*/
+//----------------------------tank minigun
+/datum/ammo/bullet/minigun/tank
+	accuracy = -HIT_ACCURACY_TIER_2
+	accuracy_var_low = PROJECTILE_VARIANCE_TIER_6
+	accuracy_var_high = PROJECTILE_VARIANCE_TIER_6
+	max_range = 18
+	accurate_range = 10
+	penetration = ARMOR_PENETRATION_TIER_2
+	damage = BULLET_DAMAGE_TIER_10
+	damage_falloff = DAMAGE_FALLOFF_TIER_8
+
+/datum/ammo/bullet/minigun/tank/ap
+	accuracy = -HIT_ACCURACY_TIER_2
+	accuracy_var_low = PROJECTILE_VARIANCE_TIER_6
+	accuracy_var_high = PROJECTILE_VARIANCE_TIER_6
+	penetration = ARMOR_PENETRATION_TIER_7
+	damage = BULLET_DAMAGE_TIER_7
+	damage_falloff = DAMAGE_FALLOFF_TIER_6
+
+//----------------------------tank autocannon
+/datum/ammo/bullet/autocannon
+	name = "autocannon round"
+	icon_state = "autocannon"
+	damage_falloff = 0
+	flags_ammo_behavior = AMMO_BALLISTIC
+
+	accuracy = HIT_ACCURACY_TIER_8
+	scatter = 0
+	damage = BULLET_DAMAGE_TIER_8
+	damage_var_high = PROJECTILE_VARIANCE_TIER_8
+	penetration = ARMOR_PENETRATION_TIER_6
+	accurate_range = 15
+	max_range = 18
+	shell_speed = AMMO_SPEED_TIER_6
+
+/datum/ammo/bullet/autocannon/on_hit_mob(mob/M,obj/item/projectile/P)
+	shellshock(M, P, 1)
+
+/datum/ammo/bullet/autocannon/on_hit_obj(obj/O,obj/item/projectile/P)
+	shellshock(O, P, 1)
+
+/datum/ammo/bullet/autocannon/on_hit_turf(turf/T,obj/item/projectile/P)
+	shellshock(T, P, 1)
+
+/datum/ammo/bullet/autocannon/do_at_max_range(obj/item/projectile/P)
+	shellshock(get_turf(P), P, 1)
+
+/datum/ammo/bullet/autocannon/iff
+	name = "iff autocannon round"
+	damage = BULLET_DAMAGE_TIER_5
+
+/datum/ammo/bullet/autocannon/iff/set_bullet_traits()
+	..()
+	LAZYADD(traits_to_give, list(
+		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_iff)
+	))
+
+/datum/ammo/bullet/autocannon/iff/on_hit_mob(mob/M,obj/item/projectile/P)
+	shellshock(M, P, 1, 0)
+	return
+
+/datum/ammo/bullet/autocannon/iff/on_hit_obj(obj/O,obj/item/projectile/P)
+	shellshock(O, P, 1, 0)
+	return
+
+/datum/ammo/bullet/autocannon/iff/on_hit_turf(turf/T,obj/item/projectile/P)
+	shellshock(T, P, 1, 0)
+	return
+
+/datum/ammo/bullet/autocannon/iff/do_at_max_range(obj/item/projectile/P)
+	shellshock(get_turf(P), P, 1, 0)
+	return
+
+//----------------------------tank LTB
+
+/datum/ammo/rocket/ltb
+	name = "cannon round"
+	icon_state = "ltb"
+	flags_ammo_behavior = AMMO_EXPLOSIVE|AMMO_ROCKET|AMMO_STRIKES_SURFACE
+
+	accuracy = HIT_ACCURACY_TIER_3
+	accurate_range = 16
+	max_range = 18
+	damage = BULLET_DAMAGE_TIER_5
+	shell_speed = AMMO_SPEED_TIER_3
+
+/datum/ammo/rocket/ltb/set_bullet_traits()
+	. = ..()
+	LAZYADD(traits_to_give, list(
+		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_ignored_range, 2)
+	))
+
+/datum/ammo/rocket/ltb/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 220, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	cell_explosion(get_turf(M), 200, 100, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/on_hit_obj(obj/O, obj/item/projectile/P)
+	cell_explosion(get_turf(O), 220, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	cell_explosion(get_turf(O), 200, 100, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/on_hit_turf(turf/T, obj/item/projectile/P)
+	cell_explosion(get_turf(T), 220, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	cell_explosion(get_turf(T), 200, 100, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 220, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	cell_explosion(get_turf(P), 200, 100, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/he
+	name = "LTB HE round"
+	icon_state = "ltb_he"
+
+/datum/ammo/rocket/ltb/he/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 200, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/he/on_hit_obj(obj/O, obj/item/projectile/P)
+	cell_explosion(get_turf(O), 200, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/he/on_hit_turf(turf/T, obj/item/projectile/P)
+	cell_explosion(get_turf(T), 200, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/he/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 200, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/ap
+	name = "LTB AP round"
+	icon_state = "ltb_ap"
+	damage = BULLET_DAMAGE_TIER_20
+
+/datum/ammo/rocket/ltb/ap/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 50, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/ap/on_hit_obj(obj/O, obj/item/projectile/P)
+	cell_explosion(get_turf(O), 50, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/ap/on_hit_turf(turf/T, obj/item/projectile/P)
+	cell_explosion(get_turf(T), 50, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/ap/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 50, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/heap
+	name = "LTB HEAP round"
+	icon_state = "ltb_ap"
+
+	damage = BULLET_DAMAGE_OFF
+
+	flags_ammo_behavior = AMMO_EXPLOSIVE|AMMO_ROCKET
+
+/datum/ammo/rocket/ltb/heap/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 60, 30, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+
+/datum/ammo/rocket/ltb/heap/on_hit_obj(obj/O, obj/item/projectile/P)
+	if(O.unacidable || !O.density)
+		cell_explosion(get_turf(O), 60, 30, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	else
+		O.visible_message(SPAN_DANGER("\The [P.name] punches through \the [O] and detonates!"),)
+		cell_explosion(get_step(get_turf(O), P.dir), 60, 30, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	return
+
+/datum/ammo/rocket/ltb/heap/on_hit_turf(turf/T, obj/item/projectile/P)
+	if(T.density)
+		if(istype(T, /turf/closed/wall))
+			var/turf/closed/wall/W = T
+			if(!W.hull)
+				W.visible_message(SPAN_DANGER("\The [P.name] penetrates right through \the [W] and detonates on the other side!"),)
+				T = get_step(T, get_dir(get_turf(P.shot_from), T))
+	cell_explosion(T, 60, 30, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	return
+
+/datum/ammo/rocket/ltb/heap/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 60, 30, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	return
+
+/datum/ammo/rocket/ltb/frg
+	name = "LTB shrapnel round"
+	icon_state = "ltb_frg"
+	damage = BULLET_DAMAGE_TIER_5
+
+	var/shrapnel_amount = 30
+	var/dispersion_angle = 90
+
+/datum/ammo/rocket/ltb/frg/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 20, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	deploy_shrapnel(get_turf(M), P)
+
+/datum/ammo/rocket/ltb/frg/on_hit_obj(obj/O, obj/item/projectile/P)
+	cell_explosion(get_turf(O), 20, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	deploy_shrapnel(get_turf(O), P)
+
+/datum/ammo/rocket/ltb/frg/on_hit_turf(turf/T, obj/item/projectile/P)
+	cell_explosion(get_turf(T), 20, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	deploy_shrapnel(T, P)
+
+/datum/ammo/rocket/ltb/frg/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 20, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	deploy_shrapnel(get_turf(P), P)
+
+/datum/ammo/rocket/ltb/frg/proc/deploy_shrapnel(var/turf/hit_turf, obj/item/projectile/P)
+	var/datum/cause_data/cause_data = create_cause_data(initial(P.name), P.firer)
+	var/dispersion_dir = get_dir(get_turf(P.shot_from), hit_turf)
+	var/shrapnel_to_launch = shrapnel_amount
+	for(var/mob/M in hit_turf)
+		create_shrapnel(hit_turf, 1, dispersion_dir, dispersion_angle, /datum/ammo/bullet/shrapnel/ltb, cause_data, FALSE, 100)
+		M.Superslow(2.0)
+		shrapnel_to_launch--
+		continue
+	create_shrapnel(hit_turf, shrapnel_to_launch, dispersion_dir, dispersion_angle, /datum/ammo/bullet/shrapnel/ltb, cause_data, FALSE, 0)
+
+//----------------------------tank TOW rockets
+
+/datum/ammo/rocket/tow
+	name = "TOW HE rocket"
+	accurate_range = 14
+	max_range = 18
+
+/datum/ammo/rocket/tow/on_hit_mob(mob/M, obj/item/projectile/P)
+	cell_explosion(get_turf(M), 100 - P.distance_travelled * 2, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, get_turf(M))
+	if(isHumanStrict(M))
+		M.ex_act(350 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+	smoke.start()
+
+/datum/ammo/rocket/tow/on_hit_obj(obj/O, obj/item/projectile/P)
+	cell_explosion(get_turf(O), 100 - P.distance_travelled * 2, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, get_turf(O))
+	smoke.start()
+
+/datum/ammo/rocket/tow/on_hit_turf(turf/T, obj/item/projectile/P)
+	cell_explosion(T, 100 - P.distance_travelled * 2, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, T)
+	smoke.start()
+
+/datum/ammo/rocket/tow/do_at_max_range(obj/item/projectile/P)
+	cell_explosion(get_turf(P), 100 - P.distance_travelled * 2, 20, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, get_turf(P))
+	smoke.start()
+
+/datum/ammo/rocket/tow/ap/tow
+	name = "TOW AP rocket"
+	accurate_range = 16
+	max_range = 18
+
+	flags_ammo_behavior = AMMO_EXPLOSIVE|AMMO_ROCKET|AMMO_HOMING
+
+/datum/ammo/rocket/ap/tow/on_hit_mob(mob/M, obj/item/projectile/P)
+	var/turf/T = get_turf(M)
+	M.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+	if(isHumanStrict(M)) // No yautya or synths. Makes humans gib on direct hit.
+		M.ex_act(300 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+	cell_explosion(T, 50, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, T)
+	smoke.start()
+
+/datum/ammo/rocket/ap/tow/on_hit_obj(obj/O, obj/item/projectile/P)
+	var/turf/T = get_turf(O)
+	O.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+	cell_explosion(T, 50, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, T)
+	smoke.start()
+
+/datum/ammo/rocket/ap/tow/on_hit_turf(turf/T, obj/item/projectile/P)
+	var/hit_mob = FALSE
+	for(var/mob/M in T)
+		M.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+		hit_mob = TRUE
+		break
+	if(!hit_mob)
+		for(var/obj/O in T)
+			if(O.density)
+				O.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+				break
+
+	cell_explosion(T, 50, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, T)
+	smoke.start()
+
+/datum/ammo/rocket/ap/tow/do_at_max_range(obj/item/projectile/P)
+	var/turf/T = get_turf(P)
+	var/hit_mob = FALSE
+	for(var/mob/M in T)
+		M.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+		hit_mob = TRUE
+		break
+	if(!hit_mob)
+		for(var/obj/O in T)
+			if(O.density)
+				O.ex_act(200 - P.distance_travelled * 4, P.dir, P.weapon_cause_data, 100)
+				break
+	cell_explosion(T, 50, 50, EXPLOSION_FALLOFF_SHAPE_LINEAR, null, P.weapon_cause_data)
+	smoke.set_up(1, T)
+	smoke.start()
+
+//----------------------------tank secondary flamer
+
+/datum/ammo/flamethrower/lzrn_flamer
+	icon_state = "flame_napalm"
+
+	max_range = 7
+	damage = BULLET_DAMAGE_TIER_3
+
+chemical_reagents_list
+
+/datum/ammo/flamethrower/lzrn_flamer/on_hit_mob(mob/M, obj/item/projectile/P)
+	drop_flame(get_turf(M), P.shot_from, P.firer)
+
+/datum/ammo/flamethrower/lzrn_flamer/on_hit_obj(obj/O, obj/item/projectile/P)
+	drop_flame(get_turf(O), P.shot_from, P.firer)
+
+/datum/ammo/flamethrower/lzrn_flamer/on_hit_turf(turf/T, obj/item/projectile/P)
+	drop_flame(T, P.shot_from, P.firer)
+
+/datum/ammo/flamethrower/lzrn_flamer/do_at_max_range(obj/item/projectile/P)
+	drop_flame(get_turf(P), P.shot_from, P.firer)
+
+/datum/ammo/flamethrower/lzrn_flamer/drop_flame(var/turf/T, var/source)
+	if(!istype(T))
+		return
+	for(var/obj/flamer_fire/FF in T)
+		qdel(FF)
+
+	var/datum/cause_data/cause_data = create_cause_data(initial(P.shot_from), P.firer)
+
+	var/datum/reagent/napalm/R = new()
+	new /obj/flamer_fire(T, cause_data, R, 1)
+
+/datum/ammo/flamethrower/lzrn_flamer/gel
+	icon_state = "flame_napalm_green"
+
+/datum/ammo/flamethrower/lzrn_flamer/gel/drop_flame(var/turf/T, var/source, var/source_mob)
+	if(!istype(T))
+		return
+	if(locate(/obj/flamer_fire) in T)
+		return
+	var/datum/reagent/napalm/ut = new()
+	new /obj/flamer_fire(T, source, source_mob, R, 2)
+
+/datum/ammo/flamethrower/lzrn_flamer/x
+	icon_state = "flame_napalm_blue"
+
+/datum/ammo/flamethrower/lzrn_flamer/x/drop_flame(var/turf/T, var/source, var/source_mob)
+	if(!istype(T))
+		return
+	if(locate(/obj/flamer_fire) in T)
+		return
+	var/datum/reagent/napalm/ut = new()
+	new /obj/flamer_fire(T, source, source_mob, R, 2)
+
+
+//---------------------------M56T Cupola
+
+/datum/ammo/bullet/smartgun/m56t_cupola
+	name = "cupola bullet"
+	icon_state = "redbullet"
+
+	max_range = 18
+	accurate_range = 14
+	accuracy = HIT_ACCURACY_TIER_6
+	damage_falloff = DAMAGE_FALLOFF_TIER_10
+	damage = BULLET_DAMAGE_TIER_6
+	penetration = ARMOR_PENETRATION_TIER_2
+
+/datum/ammo/bullet/smartgun/m56t_cupola/set_bullet_traits()
+	..()
+	LAZYADD(traits_to_give, list(
+		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_iff)
+	))
+
+/datum/ammo/bullet/smartgun/m56t_cupola/armor_piercing
+	name = "armor-piercing cupola bullet"
+	icon_state = "bullet"
+
+	accurate_range = 8
+	accuracy = HIT_ACCURACY_TIER_5
+	damage_falloff = DAMAGE_FALLOFF_TIER_10
+	damage = BULLET_DAMAGE_TIER_5
+	penetration = ARMOR_PENETRATION_TIER_8
+	damage_armor_punch = 1
+
+/datum/ammo/bullet/smartgun/m56t_cupola/armor_piercing/set_bullet_traits()
+	..()
+	LAZYREMOVE(traits_to_give, list(
+		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_iff)
+	))
+
+/*
+//================================================
+*/
+
 /*
 //======
 					Energy Ammo
@@ -2837,6 +3251,21 @@
 /datum/ammo/bullet/shrapnel/jagged/on_hit_mob(mob/M, obj/item/projectile/P)
 	if(isXeno(M))
 		M.Slow(0.4)
+
+//special shrapnel for LTB FRG shell
+/datum/ammo/bullet/shrapnel/ltb
+	name = "shrapnel"
+	icon_state = "shrapnel_light"
+	accurate_range_min = 1
+	damage = BULLET_DAMAGE_TIER_4
+	accuracy = HIT_ACCURACY_TIER_4
+	accurate_range = 7
+	shrapnel_chance = SHRAPNEL_CHANCE_TIER_2
+
+/datum/ammo/bullet/shrapnel/ltb/on_hit_mob(mob/M, obj/item/projectile/P)
+	M.Slow(0.4)
+	shake_camera(M, 2, 2)
+
 /*
 //======
 					Misc Ammo

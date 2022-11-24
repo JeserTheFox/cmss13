@@ -234,6 +234,18 @@
 	healthcheck()
 	return XENO_ATTACK_ACTION
 
+//Need to make sure vehicles cannot shoot themselves
+/obj/vehicle/multitile/get_projectile_hit_boolean(obj/item/projectile/P)
+	if(!density)	//manifestation of a Machine God and holograms can't get hit
+		return FALSE
+
+	if(istype(P.shot_from, /obj/item/hardpoint))
+		var/obj/item/hardpoint/HP = P.shot_from
+		if(HP.owner && HP.owner == src)
+			return FALSE
+
+	return TRUE
+
 //Differentiates between damage types from different bullets
 //Applies a linear transformation to bullet damage that will generally decrease damage done
 /obj/vehicle/multitile/bullet_act(var/obj/item/projectile/P)
@@ -290,71 +302,108 @@
 			break
 
 	if(istype(A, /obj/screen) || !seat)
-		return
+		return HANDLE_CLICK_UNHANDLED
 
 	if(seat == VEHICLE_DRIVER)
-		if(mods["shift"] && !mods["alt"])
+		if(mods["shift"] && !mods["alt"] && !mods["ctrl"])
 			A.examine(user)
-			return
+			return HANDLE_CLICK_HANDLED
 
-		if(mods["ctrl"] && !mods["alt"])
+		if(mods["ctrl"] && !mods["alt"] && !mods["middle"] && !mods["shift"])
 			activate_horn()
-			return
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["alt"] && !mods["ctrl"] && !mods["middle"] && !mods["shift"])
+			switch_ammo_type()
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["ctrl"] && mods["middle"])
+
+			var/obj/item/hardpoint/HP = active_hp[seat]
+
+			if(HP.health <= 0)
+				to_chat(user, SPAN_WARNING("\The [HP] is too damaged to be operated."))
+				return HANDLE_CLICK_HANDLED
+
+			handle_hardpoint_unload(user, HP)
+			return HANDLE_CLICK_HANDLED
 
 		var/obj/item/hardpoint/HP = active_hp[seat]
 		if(!HP)
 			to_chat(user, SPAN_WARNING("Please select an active hardpoint first."))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		if(!HP.can_activate(user, A))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		HP.activate(user, A)
+		return HANDLE_CLICK_HANDLED
 
 	if(seat == VEHICLE_GUNNER)
-		if(mods["shift"] && !mods["middle"])
+		if(mods["shift"] && !mods["middle"] && !mods["alt"] && !mods["ctrl"])
 			if(vehicle_flags & VEHICLE_TOGGLE_SHIFT_CLICK_GUNNER)
 				shoot_other_weapon(user, seat, A)
 			else
 				A.examine(user)
-			return
-		if(mods["middle"] && !mods["shift"])
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["middle"] && !mods["shift"] && !mods["alt"] && !mods["ctrl"])
 			if(!(vehicle_flags & VEHICLE_TOGGLE_SHIFT_CLICK_GUNNER))
 				shoot_other_weapon(user, seat, A)
-			return
-		if(mods["alt"])
+				return HANDLE_CLICK_HANDLED
+			return HANDLE_CLICK_UNHANDLED
+
+		if(mods["ctrl"] && mods["shift"] && !mods["alt"])
 			toggle_gyrostabilizer()
-			return
-		if(mods["ctrl"])
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["alt"] && !mods["middle"] && !mods["ctrl"])
+			switch_ammo_type()
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["ctrl"] && mods["middle"] && !mods["alt"])
+
+			var/obj/item/hardpoint/HP = active_hp[seat]
+
+			if(HP.health <= 0)
+				to_chat(user, SPAN_WARNING("\The [HP] is too damaged to be operated."))
+				return HANDLE_CLICK_HANDLED
+
+			handle_hardpoint_unload(user, HP)
+			return HANDLE_CLICK_HANDLED
+
+		if(mods["ctrl"] && !mods["shift"] && !mods["middle"] && !mods["alt"])
 			activate_support_module(user, seat, A)
-			return
+			return HANDLE_CLICK_HANDLED
 
 		var/obj/item/hardpoint/HP = active_hp[seat]
 		if(!HP)
 			to_chat(user, SPAN_WARNING("Please select an active hardpoint first."))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		if(!HP.can_activate(user, A))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		HP.activate(user, A)
+		return HANDLE_CLICK_HANDLED
 
 	if(seat == VEHICLE_SUPPORT_GUNNER_ONE || seat == VEHICLE_SUPPORT_GUNNER_TWO)
 		if(mods["shift"])
 			A.examine(user)
-			return
+			return HANDLE_CLICK_HANDLED
 		if(mods["middle"] || mods["alt"] || mods["ctrl"])
-			return
+			return HANDLE_CLICK_HANDLED
 
 		var/obj/item/hardpoint/HP = active_hp[seat]
 		if(!HP)
 			to_chat(user, SPAN_WARNING("Please select an active hardpoint first."))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		if(!HP.can_activate(user, A))
-			return
+			return HANDLE_CLICK_HANDLED
 
 		HP.activate(user, A)
+		return HANDLE_CLICK_HANDLED
 
 /obj/vehicle/multitile/proc/handle_player_entrance(var/mob/M)
 	if(!M || M.client == null) return

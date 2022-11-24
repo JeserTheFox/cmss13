@@ -73,6 +73,9 @@
 	//whether hardpoint has activatable ability like shooting or zooming
 	var/activatable = 0
 
+	//some hardpoints may have delayed activation, during which you can cancel it
+	var/activation_time = 0
+
 	//used to prevent welder click spam
 	var/being_repaired = FALSE
 
@@ -85,15 +88,20 @@
 	// The firing arc of this hardpoint
 	var/firing_arc = 0	//in degrees. 0 skips whole arc of fire check
 
+	//some hadpoints may have max range that doesn't correlate with it's ammo's max range, for these cases, this is here.
+	var/max_range = 0	//0 means ignore this and use ammo's max range
+
+	var/auto_fire_support = FALSE
+	var/atom/autofire_target = null
 
 	//------AMMUNITION VARS----------
 
 	//Currently loaded ammo that we shoot from
 	var/obj/item/ammo_magazine/hardpoint/ammo
 	//spare magazines that we can reload from
-	var/list/backup_clips
-	//maximum amount of spare mags
-	var/max_clips = 0
+	var/list/list/backup_ammo
+	//total maximum amount of different mags hardpoint can store
+	var/max_ammo = 0
 
 	/// An assoc list in the format list(/datum/element/bullet_trait_to_give = list(...args))
 	/// that will be given to a projectile fired from the hardpoint
@@ -106,23 +114,29 @@
 /obj/item/hardpoint/Initialize()
 	. = ..()
 	set_bullet_traits()
+	setup_mags()
 
 /obj/item/hardpoint/Destroy()
 	if(owner)
 		owner.remove_hardpoint(src)
 		owner.update_icon()
 		owner = null
-	QDEL_NULL_LIST(backup_clips)
+	for(var/ammo_type as anything in backup_ammo)
+		QDEL_NULL_LIST(backup_ammo[ammo_type])
 	QDEL_NULL(ammo)
 
 	return ..()
+
+/obj/item/hardpoint/proc/setup_mags()
+	return
 
 /// Populate traits_to_give in this proc
 /obj/item/hardpoint/proc/set_bullet_traits()
 	return
 
 /obj/item/hardpoint/proc/generate_bullet(mob/user, turf/origin_turf)
-	var/obj/item/projectile/P = new(origin_turf, create_cause_data(initial(name), user))
+	var/obj/item/projectile/P = new(src, create_cause_data(initial(name), user))
+	P.forceMove(origin_turf)	//swap these?
 	P.generate_bullet(new ammo.default_ammo)
 	// Apply bullet traits from gun
 	for(var/entry in traits_to_give)
@@ -219,18 +233,6 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 	// Update dir
 	setDir(turn(dir, deg))
 
-//for status window
-/obj/item/hardpoint/proc/get_hardpoint_info()
-	var/dat = "<hr>"
-	dat += "[name]<br>"
-	if(health <= 0)
-		dat += "Integrity: <font color=\"red\">\[DESTROYED\]</font>"
-	else
-		dat += "Integrity: [round(get_integrity_percent())]%"
-		if(ammo)
-			dat += " | Ammo: [ammo ? (ammo.current_rounds ? ammo.current_rounds : "<font color=\"red\">0</font>") : "<font color=\"red\">0</font>"]/[ammo ? ammo.max_rounds : "<font color=\"red\">0</font>"] | Mags: [LAZYLEN(backup_clips) ? LAZYLEN(backup_clips) : "<font color=\"red\">0</font>"]/[max_clips]"
-	return dat
-
 // Traces backwards from the gun origin to the vehicle to check for obstacles between the vehicle and the muzzle
 /obj/item/hardpoint/proc/clear_los(var/atom/A)
 
@@ -298,17 +300,17 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 		return FALSE
 
 	if(ammo && ammo.current_rounds <= 0)
-		to_chat(user, SPAN_WARNING("<b>\The [name] is out of ammo!</b> Magazines: <b>[SPAN_HELPFUL(LAZYLEN(backup_clips))]/[SPAN_HELPFUL(max_clips)]</b>"))
+		to_chat(user, SPAN_WARNING("<b>\The [name] is out of ammo!</b> Magazines: <b>[SPAN_HELPFUL(get_total_mags())]/[SPAN_HELPFUL(max_ammo)]</b>"))
 		return FALSE
 
 	if(!in_firing_arc(A))
 		to_chat(user, SPAN_WARNING("<b>The target is not within your firing arc!</b>"))
 		return FALSE
-
+/*
 	if(!clear_los(A))
 		to_chat(user, SPAN_WARNING("<b>You don't have a clear line of sight to the target!</b>"))
 		return FALSE
-
+*/
 	return TRUE
 
 //Called when you want to activate the hardpoint, by default firing a gun
@@ -323,65 +325,50 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 /obj/item/hardpoint/proc/livingmob_interact(var/mob/living/M)
 	return
 
-//examining a hardpoint
-/obj/item/hardpoint/examine(mob/user, var/integrity_only = FALSE)
-	if(!integrity_only)
-		..()
+/obj/item/hardpoint/examine(mob/user)
+	var/msg = "[icon2html(src, user)] That's \a [name].\n"
+	msg += desc
 	if(health <= 0)
-		to_chat(user, "It's busted!")
-	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_TRAINED)))
-		to_chat(user, "It's at [round(get_integrity_percent(), 1)]% integrity!")
+		msg += "\n<b>It's busted!</b>"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += "\nIt's at <b>[SPAN_HELPFUL(round(get_integrity_percent(), 1))]%</b> integrity!"
+		to_chat(user, SPAN_INFO(msg))
 
-//reloading hardpoint - take mag from backup clips and replace current ammo with it. Will change in future. Called via weapons loader
-/obj/item/hardpoint/proc/reload(var/mob/user)
-	if(!LAZYLEN(backup_clips))
-		to_chat(usr, SPAN_WARNING("\The [name] has no remaining backup clips."))
-		return
+//made a separate examine proc for handling giving hardpoint info when examining vehicles/holders,
+//cause I am tired of juggling with regular examine and it's constantly breaking - Jeser
+/obj/item/hardpoint/proc/examine_hardpoint(mob/user)
+	var/msg = "\nThere is \a [icon2html(src, user)] [name] installed."
+	if(health <= 0)
+		msg += "<b> It's busted!</b>"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += " It's at <b>[SPAN_HELPFUL(round(get_integrity_percent(), 1))]%</b> integrity!"
+	return msg
 
-	var/obj/item/ammo_magazine/A = LAZYACCESS(backup_clips, 1)
-	if(!A)
-		to_chat(user, SPAN_DANGER("Something went wrong! Ahelp and ask for a developer! Code: HP_RLDHP"))
-		return
-
-	to_chat(user, SPAN_NOTICE("You begin reloading \the [name]."))
-
-	sleep(20)
-
-	forceMove(ammo, get_turf(src))
-	ammo.update_icon()
-	ammo = A
-	LAZYREMOVE(backup_clips, A)
-
-	to_chat(user, SPAN_NOTICE("You reload \the [name]."))
-
-//try adding magazine to hardpoint's backup clips. Called via weapons loader
-/obj/item/hardpoint/proc/try_add_clip(var/obj/item/ammo_magazine/A, var/mob/user)
-	if(!ammo)
-		to_chat(user, SPAN_WARNING("\The [name] doesn't use ammunition."))
-		return FALSE
-	if(max_clips == 0)
-		to_chat(user, SPAN_WARNING("\The [name] does not have room for additional ammo."))
-		return FALSE
-	else if(LAZYLEN(backup_clips) >= max_clips)
-		to_chat(user, SPAN_WARNING("\The [name]'s reloader is full."))
-		return FALSE
-
-	to_chat(user, SPAN_NOTICE("You begin loading \the [A] into \the [name]."))
-
-	if(!do_after(user, 10, INTERRUPT_ALL, BUSY_ICON_FRIENDLY))
-		to_chat(user, SPAN_WARNING("Something interrupted you while reloading \the [name]."))
-		return FALSE
-
-	if(LAZYLEN(backup_clips) >= max_clips)
-		to_chat(user, SPAN_WARNING("\The [name]'s reloader is full."))
-		return FALSE
-
-	user.drop_inv_item_to_loc(A, src)
-
-	playsound(loc, 'sound/machines/hydraulics_2.ogg', 50)
-	LAZYADD(backup_clips, A)
-	to_chat(user, SPAN_NOTICE("You load \the [A] into \the [name]. Ammo: <b>[SPAN_HELPFUL(ammo.current_rounds)]/[SPAN_HELPFUL(ammo.max_rounds)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_clips))]/[SPAN_HELPFUL(max_clips)]</b>"))
-	return TRUE
+//for status window
+/obj/item/hardpoint/proc/get_hardpoint_info()
+	var/dat = "<hr>"
+	if(activatable)
+		dat += "<b><A href='?src=\ref[owner];switch_hardpoint=\ref[src]'>\[[name]\]</A></b>"
+	else
+		dat += "<b>[name]</b>"
+	if(health <= 0)
+		dat += " | Integrity: <font color=\"red\"><b>\[DESTROYED\]</b></font><br>"
+	else
+		dat += " | Integrity: <b>[round(get_integrity_percent())]%</b><br>"
+		//check if this hardpoint even uses ammo
+		if(length(backup_ammo))
+			if(ammo)
+				dat += "Ammo: [ammo.current_rounds ? ammo.current_rounds : "<b><font color=\"red\">0</font></b>"]/[ammo.max_rounds] <b>[ammo.ammo_tag]</b> <b><A href='?src=\ref[owner];unload_hardpoint=\ref[src]'>\[Unload\]</A></b>"
+			else
+				dat += "Ammo: <b>No ammo selected</b>"
+			dat += " | Total spare ammo: [get_total_mags() ? get_total_mags() : "<b><font color=\"red\">0</font></b>"]/[max_ammo]<br>"
+			if(length(backup_ammo) > 1 || !ammo)
+				for(var/tag in backup_ammo)
+					if(length(backup_ammo[tag]))
+						dat += "|<b><A href='?src=\ref[owner];switch_ammo_hardpoint=\ref[src];switch_ammo_tag=[tag]'>\[[tag]\]</A></b>: x[length(backup_ammo[tag])]"
+					else
+						dat += "|<b>\[[tag]\]</b>: x[length(backup_ammo[tag])]"
+	return dat
 
 /obj/item/hardpoint/attackby(var/obj/item/O, var/mob/user)
 	if(iswelder(O))
@@ -449,6 +436,92 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 	being_repaired = FALSE
 	return
 
+//-----------------------------
+//------AMMO AND FIRING PROCS----------
+//-----------------------------
+
+//reloading hardpoint - replaces current ammo with same type of ammo or whatever it can find
+/obj/item/hardpoint/proc/reload(var/mob/living/carbon/human/user, var/ammo_tag)
+	//we need to warn user about this occasion
+	if(get_total_mags() <= 0)
+		to_chat(user, SPAN_WARNING("WARNING. \The [name] has ran out of spare ammo!"))
+		return
+
+	//if we have same ammo type magazines, we load them, otherwise, we search other types
+	if(ammo_tag && length(backup_ammo[ammo_tag]))
+		ammo = backup_ammo[ammo_tag][1]
+	else
+		for(var/type in backup_ammo)
+			if(length(backup_ammo[type]))
+				ammo = backup_ammo[type][1]
+				break
+
+	to_chat(user, SPAN_NOTICE("\The <b>[ammo.ammo_tag]</b> ammo (<b>[SPAN_HELPFUL(ammo.current_rounds)]/[SPAN_HELPFUL(ammo.max_rounds)]</b>) has been selected. ([SPAN_HELPFUL(get_total_mags())] left)"))
+	return
+
+//handles switching to another type of ammo, returns whether succeeded or not
+/obj/item/hardpoint/proc/switch_ammo_type(var/mob/living/carbon/human/user, var/ammo_tag)
+	next_use = world.time + 2 SECONDS
+
+	//final check
+	if(ammo && ammo.ammo_tag == ammo_tag || !backup_ammo[ammo_tag][1])
+		return FALSE
+
+	ammo = backup_ammo[ammo_tag][1]
+	sleep(2 SECONDS)
+	return TRUE
+
+//counts total amount of all types of magazines in the hardpoint
+/obj/item/hardpoint/proc/get_total_mags()
+	var/total_ammo = 0
+
+	if(!length(backup_ammo))
+		return total_ammo
+
+	for(var/ammo_type in backup_ammo)
+		total_ammo += length(backup_ammo[ammo_type])
+	return total_ammo
+
+//returns string consisting of amount of mags of each ammo type
+/obj/item/hardpoint/proc/get_ammo_report()
+
+	if(!length(backup_ammo))
+		return "ERROR. MIXED AMMO WAS NOT PROPERlY INITIALIZED. TELL A DEV."
+
+	var/ammo_report = "<b>[name]</b> ammo status:\n"
+	for(var/ammo_type in backup_ammo)
+		ammo_report += "<b>[SPAN_HELPFUL(ammo_type)]</b>: [SPAN_HELPFUL(length(backup_ammo[ammo_type]))] left.\n"
+	return ammo_report
+
+//try adding magazine to hardpoint's backup clips. Called via weapons loader
+/obj/item/hardpoint/proc/try_add_clip(var/obj/item/ammo_magazine/hardpoint/A, var/mob/user)
+	if(!backup_ammo)
+		to_chat(user, SPAN_WARNING("\The [name] doesn't use ammunition."))
+		return FALSE
+	if(max_ammo == 0)
+		to_chat(user, SPAN_WARNING("\The [name] does not have room for additional ammo."))
+		return FALSE
+	else if(get_total_mags() >= max_ammo)
+		to_chat(user, SPAN_WARNING("\The [name]'s maximum ammo capacity is reached."))
+		return FALSE
+
+	to_chat(user, SPAN_NOTICE("You begin loading \the [A] into \the [name]."))
+
+	if(!do_after(user, 10, INTERRUPT_ALL, BUSY_ICON_FRIENDLY))
+		to_chat(user, SPAN_WARNING("Something interrupted you while reloading \the [name]."))
+		return FALSE
+
+	if(get_total_mags() >= max_ammo)
+		to_chat(user, SPAN_WARNING("\The [name]'s maximum ammo capacity is reached."))
+		return FALSE
+
+	user.drop_inv_item_to_loc(A, src)
+
+	playsound(loc, 'sound/machines/hydraulics_2.ogg', 50)
+	backup_ammo[A.ammo_tag] += A
+	to_chat(user, SPAN_NOTICE("You load \the [A].\n[get_ammo_report()]"))
+	return TRUE
+
 //determines whether something is in firing arc of a hardpoint
 /obj/item/hardpoint/proc/in_firing_arc(var/atom/A)
 	if(!owner)
@@ -487,7 +560,11 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 	return abs(angle) <= (firing_arc/2)
 
 //doing last preparation before actually firing gun
-/obj/item/hardpoint/proc/fire(var/mob/user, var/atom/A)
+/obj/item/hardpoint/proc/fire(var/mob/user, var/atom/A, var/autofire = FALSE)
+	if(!ammo)
+		to_chat(user, SPAN_WARNING("WARNING. No ammunition is currently selected."))
+		return
+
 	if(ammo.current_rounds <= 0)
 		return
 
@@ -500,18 +577,20 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 
 	fire_projectile(user, A)
 
-	to_chat(user, SPAN_WARNING("[name] Ammo: <b>[SPAN_HELPFUL(ammo ? ammo.current_rounds : 0)]/[SPAN_HELPFUL(ammo ? ammo.max_rounds : 0)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_clips))]/[SPAN_HELPFUL(max_clips)]</b>"))
+	if(!autofire)
+		to_chat(user, SPAN_WARNING("[name] Ammo: <b>[SPAN_HELPFUL(ammo.current_rounds)]/[SPAN_HELPFUL(ammo.max_rounds)]</b> <b>[ammo.ammo_tag]</b> | Mags: <b>[SPAN_HELPFUL(get_total_mags())]/[SPAN_HELPFUL(max_ammo)]</b>"))
 
 //finally firing the gun
 /obj/item/hardpoint/proc/fire_projectile(var/mob/user, var/atom/A)
 	set waitfor = 0
 
 	var/turf/origin_turf = get_turf(src)
-	origin_turf = locate(origin_turf.x + origins[1], origin_turf.y + origins[2], origin_turf.z)
+	if(origins[1] || origins[2])
+		origin_turf = locate(origin_turf.x + origins[1], origin_turf.y + origins[2], origin_turf.z)
 
 	var/obj/item/projectile/P = generate_bullet(user, origin_turf)
 	SEND_SIGNAL(P, COMSIG_BULLET_USER_EFFECTS, user)
-	P.fire_at(A, user, src, P.ammo.max_range, P.ammo.shell_speed)
+	P.fire_at(A, user, src, max_range ? max_range : P.ammo.max_range, P.ammo.shell_speed)
 
 	if(use_muzzle_flash)
 		muzzle_flash(Get_Angle(owner, A))

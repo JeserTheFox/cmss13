@@ -1,11 +1,11 @@
 /obj/item/hardpoint/locomotion/apc_wheels
 	name = "APC Wheels"
-	desc = "Integral to the movement of the APC."
+	desc = "APC's locomotion module. Each of the wheels can steer independently for increased maneuverability. The tires are armoured against small-arms fire and shrapnel."
 	icon = 'icons/obj/vehicles/hardpoints/apc.dmi'
 
 	damage_multiplier = 0.15
 
-	icon_state = "tires"
+	icon_state = "wheels"
 	disp_icon = "apc"
 	disp_icon_state = "wheels"
 

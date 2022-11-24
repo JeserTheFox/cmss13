@@ -1,6 +1,6 @@
 /obj/item/hardpoint/support/flare_launcher
 	name = "M-87F Flare Launcher"
-	desc = "A support module for APCs that shoots flares."
+	desc = "APC's support module. M-87F Flare Launcher allows APC crew to illuminate surrounding area with flares for advancing infantry. It is said that some talented technician from the 3rd brigade converted one of these to launch fireworks. For some reason, their work was taken away and blueprints classified."
 	icon = 'icons/obj/vehicles/hardpoints/apc.dmi'
 
 	icon_state = "flare_launcher"
@@ -19,8 +19,7 @@
 
 	origins = list(0, -2)
 
-	ammo = new /obj/item/ammo_magazine/hardpoint/flare_launcher
-	max_clips = 3
+	max_ammo = 5
 
 	use_muzzle_flash = FALSE
 
@@ -29,3 +28,9 @@
 	LAZYADD(traits_to_give, list(
 		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_iff)
 	))
+
+/obj/item/hardpoint/support/flare_launcher/setup_mags()
+	backup_ammo = list(
+		"M-87F Flare" = list(),
+		)
+	return

@@ -1,10 +1,10 @@
 /obj/item/hardpoint/primary/autocannon
 	name = "AC3-E Autocannon"
-	desc = "A primary autocannon for tanks that shoots explosive flak rounds"
+	desc = "Tank's primary armament. Light 20mm autocannon is perfect for fast scouting tank. Also used to train rookie gunners, due to available IFF-capatible rounds."
 
-	icon_state = "ace_autocannon"
+	icon_state = "autocannon"
 	disp_icon = "tank"
-	disp_icon_state = "ace_autocannon"
+	disp_icon_state = "autocannon"
 	activation_sounds = list('sound/weapons/vehicles/autocannon_fire.ogg')
 
 	health = 500
@@ -14,8 +14,7 @@
 
 	origins = list(0, -3)
 
-	ammo = new /obj/item/ammo_magazine/hardpoint/ace_autocannon
-	max_clips = 2
+	max_ammo = 6
 
 	px_offsets = list(
 		"1" = list(0, 22),
@@ -23,3 +22,10 @@
 		"4" = list(32, 0),
 		"8" = list(-32, 0)
 	)
+
+/obj/item/hardpoint/primary/autocannon/setup_mags()
+	backup_ammo = list(
+		"AC3-E" = list(),
+		"AC3-E IFF" = list()
+		)
+	return

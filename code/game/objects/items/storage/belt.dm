@@ -1438,18 +1438,20 @@ obj/item/storage/belt/gun/m44/lever_action/verb/detach_holster()
 	max_w_class = SIZE_LARGE
 	max_storage_space = 2
 	can_hold = list(
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltaaap_minigun,
-		/obj/item/ammo_magazine/hardpoint/primary_flamer,
-		/obj/item/ammo_magazine/hardpoint/secondary_flamer,
-		/obj/item/ammo_magazine/hardpoint/ace_autocannon,
-		/obj/item/ammo_magazine/hardpoint/towlauncher,
-		/obj/item/ammo_magazine/hardpoint/m56_cupola,
+		/obj/item/ammo_magazine/hardpoint/ltb,
+		/obj/item/ammo_magazine/hardpoint/minigun,
+		/obj/item/ammo_magazine/hardpoint/dragon_flamer,
+		/obj/item/ammo_magazine/hardpoint/lzrn_flamer,
+		/obj/item/ammo_magazine/hardpoint/autocannon,
+		/obj/item/ammo_magazine/hardpoint/tow,
+		/obj/item/ammo_magazine/hardpoint/m56t,
 		/obj/item/ammo_magazine/hardpoint/tank_glauncher,
 		/obj/item/ammo_magazine/hardpoint/turret_smoke,
-		/obj/item/ammo_magazine/hardpoint/boyars_dualcannon,
+		/obj/item/ammo_magazine/hardpoint/plasma_cannon,
 		/obj/item/ammo_magazine/hardpoint/flare_launcher
 	)
+
+
 
 /obj/item/storage/belt/souto
 	name = "\improper Souto belt"

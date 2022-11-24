@@ -8,6 +8,8 @@
 	// List of held hardpoints
 	var/list/hardpoints
 
+	activatable = 0
+
 /obj/item/hardpoint/holder/Destroy()
 	QDEL_NULL_LIST(hardpoints)
 
@@ -19,24 +21,54 @@
 		var/image/I = H.get_hardpoint_image()
 		overlays += I
 
-/obj/item/hardpoint/holder/examine(var/mob/user, integrity_only = FALSE)
-
-	if(!integrity_only)
-		..()
-	else
-		if(health <= 0)
-			to_chat(user, "It's busted!")
-		else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_TRAINED)))
-			to_chat(user, "It's at [round(get_integrity_percent(), 1)]% integrity!")
+/obj/item/hardpoint/holder/examine(var/mob/user)
+	var/msg = "[icon2html(src, user)] That's \a [name].\n"
+	msg += desc
+	if(health <= 0)
+		msg += "\n<b>It's busted!</b>"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += "\nIt's at <b>[SPAN_HELPFUL(round(get_integrity_percent(), 1))]%</b> integrity!"
 	for(var/obj/item/hardpoint/H in hardpoints)
-		to_chat(user, "There is a [H] module installed on \the [src].")
-		H.examine(user, TRUE)
+		H.examine_hardpoint(user)
+
+//made a separate examine proc for handling giving hardpoint info when examining vehicles/holders, cause I am tired of juggling with examine and it's constantly breaking - Jeser
+/obj/item/hardpoint/holder/examine_hardpoint(mob/user)
+	var/msg = "\nThere is \a [icon2html(src, user)] [name] installed."
+	if(health <= 0)
+		msg += " <b>It's busted!</b>"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += " It's at <b>[SPAN_HELPFUL(round(get_integrity_percent(), 1))]%</b> integrity!"
+	for(var/obj/item/hardpoint/H in hardpoints)
+		msg += H.examine_hardpoint(user)
+	return msg
 
 /obj/item/hardpoint/holder/get_hardpoint_info()
-	..()
 	var/dat = ""
 	for(var/obj/item/hardpoint/H in hardpoints)
 		dat += H.get_hardpoint_info()
+	dat += "<hr>"
+	if(activatable)
+		dat += "<b><A href='?src=\ref[owner];switch_hardpoint=\ref[src]'>\[[name]\]</A></b>"
+	else
+		dat += "<b>[name]</b>"
+	if(health <= 0)
+		dat += " | Integrity: <font color=\"red\"><b>\[DESTROYED\]</b></font><br>"
+	else
+		dat += " | Integrity: <b>[round(get_integrity_percent())]%</b><br>"
+		//check if this hardpoint even uses ammo
+		if(length(backup_ammo))
+			if(ammo)
+				dat += "Ammo: [ammo.current_rounds ? ammo.current_rounds : "<b><font color=\"red\">0</font></b>"]/[ammo.max_rounds] <b>[ammo.ammo_tag]</b> <b><A href='?src=\ref[owner];unload_hardpoint=\ref[src]'>\[Unload\]</A></b>"
+			else
+				dat += "Ammo: <b>No ammo selected</b>"
+			dat += " | Total spare ammo: [get_total_mags() ? get_total_mags() : "<b><font color=\"red\">0</font></b>"]/[max_ammo]<br>"
+			if(length(backup_ammo) > 1 || !ammo)
+				for(var/tag in backup_ammo)
+					if(length(backup_ammo[tag]))
+						dat += "|<b><A href='?src=\ref[owner];switch_ammo_hardpoint=\ref[src];switch_ammo_tag=[tag]'>\[[tag]\]</A></b>: x[length(backup_ammo[tag])]|"
+					else
+						dat += "|<b>\[[tag]\]</b>: x[length(backup_ammo[tag])]"
+
 	return dat
 
 /obj/item/hardpoint/holder/take_damage(var/damage)
@@ -122,6 +154,7 @@
 	H.owner = owner
 	H.forceMove(src)
 	LAZYADD(hardpoints, H)
+	sort_hardpoints()
 
 	H.rotate(turning_angle(H.dir, dir))
 
@@ -147,11 +180,34 @@
 		hps += H
 	return hps
 
+//This proc sorts list/hardpoints by specific order, which is:
+/*
+HOLDER(Turret)
+PRIMARY
+SECONDARY
+SUPPORT
+ARMOR
+LOCOMOTION
+*/
+//it is done to guarantee a consistent listing of them for VCs in possible menus and windows
+/obj/item/hardpoint/holder/proc/sort_hardpoints()
+	var/list/sorted_hardpoints = list(
+						HDPT_PRIMARY = null,
+						HDPT_SECONDARY = null,
+						HDPT_SUPPORT = null,
+						)
+	for(var/obj/item/hardpoint/HP in hardpoints)
+		sorted_hardpoints[HP.slot] = HP
+	hardpoints.Cut()
+	for(var/slot in sorted_hardpoints)
+		hardpoints += sorted_hardpoints[slot]
+
+
 //Returns hardpoints that use ammunition
 /obj/item/hardpoint/holder/proc/get_hardpoints_with_ammo(var/seat)
 	var/list/hps = list()
 	for(var/obj/item/hardpoint/H in hardpoints)
-		if(!H.ammo || seat && seat != H.allowed_seat)
+		if(!backup_ammo || seat && seat != H.allowed_seat)
 			continue
 		hps += H
 	return hps

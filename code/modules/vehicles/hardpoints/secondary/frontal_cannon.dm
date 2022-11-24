@@ -1,11 +1,11 @@
-/obj/item/hardpoint/secondary/frontalcannon
+/obj/item/hardpoint/secondary/re700
 	name = "Bleihagel RE-RE700 Frontal Cannon"
-	desc = "The marketing department over at Bleihagel would have you believe that the RE-RE700 is an original design. However, experts who pried the cover off the cannon have discovered an object with a striking similarity to the popular M56 Cupola. It is still unknown why the cannon has two barrels."
+	desc = "APC's secondary armament. The marketing department over at Bleihagel would have you believe that the RE-RE700 is an original design. However, experts who pried the cover off the cannon have discovered an object with a striking similarity to the popular M56T Cupola. It is still unknown why the cannon has two barrels."
 	icon = 'icons/obj/vehicles/hardpoints/apc.dmi'
 
-	icon_state = "front_cannon"
+	icon_state = "re700"
 	disp_icon = "apc"
-	disp_icon_state = "frontalcannon"
+	disp_icon_state = "re700"
 	activation_sounds = list('sound/weapons/gun_smartgun1.ogg', 'sound/weapons/gun_smartgun2.ogg', 'sound/weapons/gun_smartgun3.ogg')
 
 	damage_multiplier = 0.11
@@ -18,8 +18,7 @@
 
 	origins = list(0, -2)
 
-	ammo = new /obj/item/ammo_magazine/hardpoint/m56_cupola/frontal_cannon
-	max_clips = 1
+	max_ammo = 2
 
 	muzzle_flash_pos = list(
 		"1" = list(-13, 46),
@@ -28,13 +27,19 @@
 		"8" = list(-62, -26)
 	)
 
-/obj/item/hardpoint/secondary/frontalcannon/set_bullet_traits()
+/obj/item/hardpoint/secondary/re700/setup_mags()
+	backup_ammo = list(
+		"RE700 IFF" = list(),
+		)
+	return
+
+/obj/item/hardpoint/secondary/re700/set_bullet_traits()
 	..()
 	LAZYADD(traits_to_give, list(
 		BULLET_TRAIT_ENTRY(/datum/element/bullet_trait_iff)
 	))
 
-/obj/item/hardpoint/secondary/frontalcannon/fire(var/mob/user, var/atom/A)
+/obj/item/hardpoint/secondary/re700/fire(var/mob/user, var/atom/A)
 	if(ammo.current_rounds <= 0)
 		return
 
@@ -51,4 +56,4 @@
 			break
 		if(bullets_fired < burst_amount)	//we need to sleep only if there are more bullets to shoot in the burst
 			sleep(3)
-	to_chat(user, SPAN_WARNING("[src] Ammo: <b>[SPAN_HELPFUL(ammo ? ammo.current_rounds : 0)]/[SPAN_HELPFUL(ammo ? ammo.max_rounds : 0)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_clips))]/[SPAN_HELPFUL(max_clips)]</b>"))
+	to_chat(user, SPAN_WARNING("[src] Ammo: <b>[SPAN_HELPFUL(ammo ? ammo.current_rounds : 0)]/[SPAN_HELPFUL(ammo ? ammo.max_rounds : 0)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_ammo))]/[SPAN_HELPFUL(max_ammo)]</b>"))

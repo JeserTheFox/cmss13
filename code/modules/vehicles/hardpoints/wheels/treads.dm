@@ -1,6 +1,6 @@
 /obj/item/hardpoint/locomotion/treads
 	name = "Treads"
-	desc = "Integral to the movement of the vehicle."
+	desc = "Tank's locomotion module. These didn't change much since the first serial model created more than two hundreds years ago."
 
 	icon_state = "treads"
 	disp_icon = "tank"

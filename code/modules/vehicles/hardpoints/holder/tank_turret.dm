@@ -17,7 +17,7 @@
 	accuracy = 0.8
 
 	ammo = new /obj/item/ammo_magazine/hardpoint/turret_smoke
-	max_clips = 2
+	max_ammo = 4
 	use_muzzle_flash = FALSE
 
 	w_class = SIZE_MASSIVE
@@ -35,13 +35,13 @@
 	accepted_hardpoints = list(
 		// primaries
 		/obj/item/hardpoint/primary/flamer,
-		/obj/item/hardpoint/primary/cannon,
+		/obj/item/hardpoint/primary/ltb,
 		/obj/item/hardpoint/primary/minigun,
 		/obj/item/hardpoint/primary/autocannon,
 		// secondaries
-		/obj/item/hardpoint/secondary/small_flamer,
-		/obj/item/hardpoint/secondary/towlauncher,
-		/obj/item/hardpoint/secondary/m56cupola,
+		/obj/item/hardpoint/secondary/flamer,
+		/obj/item/hardpoint/secondary/tow,
+		/obj/item/hardpoint/secondary/m56t,
 		/obj/item/hardpoint/secondary/grenade_launcher
 	)
 
@@ -59,6 +59,12 @@
 	var/rotation_windup = 15
 	// Used during the windup
 	var/rotating = FALSE
+
+/obj/item/hardpoint/holder/tank_turret/setup_mags()
+	backup_ammo = list(
+		"M34A2-A Smoke" = list(),
+		)
+	return
 
 /obj/item/hardpoint/holder/tank_turret/update_icon()
 	var/broken = (health <= 0)
@@ -104,17 +110,31 @@
 	..()
 
 /obj/item/hardpoint/holder/tank_turret/get_hardpoint_info()
-	var/dat = "<hr>"
-	dat += "M34A2-A Turret Smoke Screen<br>"
-	if(health <= 0)
-		dat += "Integrity: <font color=\"red\">\[DESTROYED\]</font>"
-	else
-		dat += "Integrity: [round(get_integrity_percent())]%"
-		if(ammo)
-			dat += " | Uses left: [ammo ? (ammo.current_rounds ? ammo.current_rounds / 2 : "<font color=\"red\">0</font>") : "<font color=\"red\">0</font>"]/[ammo ? ammo.max_rounds / 2 : "<font color=\"red\">0</font>"] | Mags: [LAZYLEN(backup_clips) ? LAZYLEN(backup_clips) : "<font color=\"red\">0</font>"]/[max_clips]"
-
+	var/dat = ""
 	for(var/obj/item/hardpoint/H in hardpoints)
 		dat += H.get_hardpoint_info()
+	dat += "<hr>"
+	if(activatable)
+		dat += "<b><A href='?src=\ref[owner];switch_hardpoint=\ref[src]'>\[M34A2-A Turret Smoke Screen\]</A></b>"
+	else
+		dat += "<b>M34A2-A Turret Smoke Screen</b>"
+	if(health <= 0)
+		dat += " | Integrity: <font color=\"red\"><b>\[DESTROYED\]</b></font><br>"
+	else
+		dat += " | Integrity: <b>[round(get_integrity_percent())]%</b><br>"
+		//check if this hardpoint even uses ammo
+		if(length(backup_ammo))
+			if(ammo)
+				dat += "Uses left: [ammo.current_rounds ? ammo.current_rounds / 2 : "<b><font color=\"red\">0</font></b>"]/[ammo.max_rounds / 2] <b>[ammo.ammo_tag]</b> <b><A href='?src=\ref[owner];unload_hardpoint=\ref[src]'>\[Unload\]</A></b>"
+			else
+				dat += "Uses left: <b>No ammo selected</b>"
+			dat += " | Total spare ammo: [get_total_mags() ? get_total_mags() : "<b><font color=\"red\">0</font></b>"]/[max_ammo]<br>"
+			if(length(backup_ammo) > 1 || !ammo)
+				for(var/tag in backup_ammo)
+					if(length(backup_ammo[tag]))
+						dat += "|<b><A href='?src=\ref[owner];switch_ammo_hardpoint=\ref[src];switch_ammo_tag=[tag]'>\[[tag]\]</A></b>: x[length(backup_ammo[tag])]|"
+					else
+						dat += "|<b>\[[tag]\]</b>: x[length(backup_ammo[tag])]"
 	return dat
 
 //gyro ON locks the turret in one direction, OFF will make turret turning when tank turns
@@ -151,27 +171,27 @@
 	..(deg)
 
 	var/obj/vehicle/multitile/tank/C = owner
-	var/obj/item/hardpoint/support/artillery_module/AM
-	for(var/obj/item/hardpoint/support/artillery_module/A in C.hardpoints)
-		AM = A
-	if(AM && AM.is_active)
+	var/obj/item/hardpoint/support/advanced_optics/AOM
+	for(var/obj/item/hardpoint/support/advanced_optics/A in C.hardpoints)
+		AOM = A
+	if(AOM && AOM.is_active)
 		var/mob/user = C.seats[VEHICLE_GUNNER]
 		if(user && user.client)
 			user = C.seats[VEHICLE_GUNNER]
-			user.client.change_view(AM.view_buff, src)
+			user.client.change_view(AOM.view_buff)
 
 			switch(dir)
 				if(NORTH)
 					user.client.pixel_x = 0
-					user.client.pixel_y = AM.view_tile_offset * 32
+					user.client.pixel_y = AOM.view_tile_offset * 32
 				if(SOUTH)
 					user.client.pixel_x = 0
-					user.client.pixel_y = -1 * AM.view_tile_offset * 32
+					user.client.pixel_y = -1 * AOM.view_tile_offset * 32
 				if(EAST)
-					user.client.pixel_x = AM.view_tile_offset * 32
+					user.client.pixel_x = AOM.view_tile_offset * 32
 					user.client.pixel_y = 0
 				if(WEST)
-					user.client.pixel_x = -1 * AM.view_tile_offset * 32
+					user.client.pixel_x = -1 * AOM.view_tile_offset * 32
 					user.client.pixel_y = 0
 
 /obj/item/hardpoint/holder/tank_turret/fire(var/mob/user, var/atom/A)
@@ -206,7 +226,7 @@
 		playsound(get_turf(src), pick(activation_sounds), 60, 1)
 	fire_projectile(user, R)
 
-	to_chat(user, SPAN_WARNING("Smoke Screen uses left: <b>[SPAN_HELPFUL(ammo ? ammo.current_rounds / 2 : 0)]/[SPAN_HELPFUL(ammo ? ammo.max_rounds / 2 : 0)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_clips))]/[SPAN_HELPFUL(max_clips)]</b>"))
+	to_chat(user, SPAN_WARNING("Smoke Screen uses left: <b>[SPAN_HELPFUL(ammo ? ammo.current_rounds / 2 : 0)]/[SPAN_HELPFUL(ammo ? ammo.max_rounds / 2 : 0)]</b> | Mags: <b>[SPAN_HELPFUL(LAZYLEN(backup_ammo))]/[SPAN_HELPFUL(max_ammo)]</b>"))
 
 /obj/item/hardpoint/holder/tank_turret/fire_projectile(var/mob/user, var/atom/A)
 	set waitfor = 0

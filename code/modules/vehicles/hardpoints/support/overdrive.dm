@@ -1,6 +1,6 @@
 /obj/item/hardpoint/support/overdrive_enhancer
-	name = "Overdrive Enhancer"
-	desc = "Increases the movement speed of the vehicle it's atached to"
+	name = "Overdrive Enhancer Kit"
+	desc = "Tank's support module. A bunch of upgraded engine parts with a small supply of classified fuel enrichment liquid. Better hope it won't lead to better explosion if fueltank gets hit. When installed adds a hundred or so horsepowers to your engine, making tank faster."
 
 	icon_state = "odrive_enhancer"
 	disp_icon = "tank"
@@ -8,9 +8,9 @@
 
 	health = 250
 
-	// 20% movespeed increase. Remember that movespeed is given in delay
+	// 25% movespeed increase. Remember that movespeed is given in delay
 	buff_multipliers = list(
-		"move" = 0.8
+		"move" = 0.75
 	)
 
 	px_offsets = list(

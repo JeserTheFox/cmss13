@@ -1,10 +1,10 @@
-/obj/item/hardpoint/secondary/small_flamer
+/obj/item/hardpoint/secondary/flamer
 	name = "LZR-N Flamer Unit"
-	desc = "A secondary weapon for tanks that spews hot fire."
+	desc = "Tank's secondary armament. Flamer unit TODO DESCRIPTION"
 
-	icon_state = "flamer"
+	icon_state = "lzrn_flamer"
 	disp_icon = "tank"
-	disp_icon_state = "flamer"
+	disp_icon_state = "lzrn_flamer"
 	activation_sounds = list('sound/weapons/vehicles/flamethrower.ogg')
 
 	health = 300
@@ -14,12 +14,9 @@
 
 	origins = list(0, -2)
 
-	ammo = new /obj/item/ammo_magazine/hardpoint/secondary_flamer
-	max_clips = 1
+	max_ammo = 2
 
 	use_muzzle_flash = FALSE
-
-	var/max_range = 7
 
 	px_offsets = list(
 		"1" = list(2, 14),
@@ -28,31 +25,25 @@
 		"8" = list(-3, 18)
 	)
 
-/obj/item/hardpoint/secondary/small_flamer/fire_projectile(var/mob/user, var/atom/A)
+/obj/item/hardpoint/secondary/flamer/setup_mags()
+	backup_ammo = list(
+		"LZR-N Napalm" = list(),
+		)
+	return
+
+/obj/item/hardpoint/secondary/flamer/fire_projectile(var/mob/user, var/atom/A)
 	set waitfor = 0
 
 	var/turf/origin_turf = get_turf(src)
 	origin_turf = locate(origin_turf.x + origins[1], origin_turf.y + origins[2], origin_turf.z)
-	var/list/turf/turfs = getline2(origin_turf, A)
-	var/distance = 0
-	var/turf/prev_T
 
-	for(var/turf/T in turfs)
-		if(T == loc)
-			prev_T = T
-			continue
-		if(!ammo.current_rounds) 	break
-		if(distance >= max_range) 	break
-		if(prev_T && LinkBlocked(prev_T, T))
-			break
-		ammo.current_rounds--
-		flame_turf(T, user)
-		distance++
-		prev_T = T
-		sleep(1)
+	var/range = get_dist(origin_turf, A) + 1
 
-/obj/item/hardpoint/secondary/small_flamer/proc/flame_turf(turf/T, mob/user)
-	if(!istype(T)) return
+	var/obj/item/projectile/P = generate_bullet(user, origin_turf)
+	SEND_SIGNAL(P, COMSIG_BULLET_USER_EFFECTS, owner.seats[VEHICLE_GUNNER])
+	P.fire_at(A, owner.seats[VEHICLE_GUNNER], src, range < P.ammo.max_range ? range : P.ammo.max_range, P.ammo.shell_speed)
 
-	if(!locate(/obj/flamer_fire) in T) // No stacking flames!
-		new/obj/flamer_fire(T, create_cause_data(initial(name), user))
+	if(use_muzzle_flash)
+		muzzle_flash(Get_Angle(owner, A))
+
+	ammo.current_rounds--

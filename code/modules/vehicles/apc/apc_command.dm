@@ -74,6 +74,8 @@
 			/obj/vehicle/multitile/proc/switch_hardpoint,
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
+			/obj/vehicle/multitile/proc/switch_ammo_type,
+			/obj/vehicle/multitile/proc/unload_active_hardpoint,
 		))
 
 /obj/vehicle/multitile/apc/command/remove_seated_verbs(var/mob/living/M, var/seat)
@@ -94,6 +96,8 @@
 			/obj/vehicle/multitile/proc/switch_hardpoint,
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
+			/obj/vehicle/multitile/proc/switch_ammo_type,
+			/obj/vehicle/multitile/proc/unload_active_hardpoint,
 		))
 
 /obj/vehicle/multitile/apc/command/initialize_cameras(var/change_tag = FALSE)
@@ -174,8 +178,8 @@
 */
 
 /obj/vehicle/multitile/apc/command/decrepit/load_hardpoints(var/obj/vehicle/multitile/R)
-	add_hardpoint(new /obj/item/hardpoint/primary/dualcannon)
-	add_hardpoint(new /obj/item/hardpoint/secondary/frontalcannon)
+	add_hardpoint(new /obj/item/hardpoint/primary/plasma_cannon)
+	add_hardpoint(new /obj/item/hardpoint/secondary/re700)
 	add_hardpoint(new /obj/item/hardpoint/support/flare_launcher)
 	add_hardpoint(new /obj/item/hardpoint/locomotion/apc_wheels)
 
@@ -185,8 +189,8 @@
 	healthcheck()
 
 /obj/vehicle/multitile/apc/command/fixed/load_hardpoints(var/obj/vehicle/multitile/R)
-	add_hardpoint(new /obj/item/hardpoint/primary/dualcannon)
-	add_hardpoint(new /obj/item/hardpoint/secondary/frontalcannon)
+	add_hardpoint(new /obj/item/hardpoint/primary/plasma_cannon)
+	add_hardpoint(new /obj/item/hardpoint/secondary/re700)
 	add_hardpoint(new /obj/item/hardpoint/support/flare_launcher)
 	add_hardpoint(new /obj/item/hardpoint/locomotion/apc_wheels)
 
