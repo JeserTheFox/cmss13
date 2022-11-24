@@ -2,9 +2,10 @@
 	name = "LTAA-AP Minigun"
 	desc = "A primary weapon for tanks that spews bullets"
 
-	icon_state = "ltaaap_minigun"
+	icon_state = "minigun"
 	disp_icon = "tank"
-	disp_icon_state = "ltaaap_minigun"
+	disp_icon_state = "minigun"
+	has_camo = TRUE
 
 	health = 350
 	cooldown = 8

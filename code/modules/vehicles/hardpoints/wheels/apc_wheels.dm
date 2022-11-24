@@ -5,9 +5,11 @@
 
 	damage_multiplier = 0.15
 
-	icon_state = "tires"
+	icon_state = "wheels"
 	disp_icon = "apc"
 	disp_icon_state = "wheels"
+
+	has_camo = TRUE
 
 	health = 500
 

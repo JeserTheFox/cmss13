@@ -2,9 +2,9 @@
 	name = "Overdrive Enhancer"
 	desc = "Increases the movement speed of the vehicle it's atached to"
 
-	icon_state = "odrive_enhancer"
+	icon_state = "overdrive"
 	disp_icon = "tank"
-	disp_icon_state = "odrive_enhancer"
+	disp_icon_state = "overdrive"
 
 	health = 250
 

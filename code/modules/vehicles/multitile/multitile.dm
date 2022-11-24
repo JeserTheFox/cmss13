@@ -162,6 +162,11 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 
 	var/move_on_turn = FALSE
 
+	//paint jobs
+	var/supports_paintjobs = FALSE
+	var/datum/vehicle_paintjob/Camo_paintjob = null
+	var/datum/vehicle_paintjob/Custom_paintjob = null
+
 /obj/vehicle/multitile/Initialize()
 	. = ..()
 
@@ -191,10 +196,17 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 
 	GLOB.all_multi_vehicles -= src
 
+	Camo_paintjob = null
+
 	. = ..()
 
 /obj/vehicle/multitile/proc/initialize_cameras()
 	return
+
+/obj/vehicle/multitile/proc/apply_default_paintjob()
+	Camo_paintjob = GLOB.vehicle_paintjobs["paintjobs_datum"][/datum/vehicle_paintjob/camo]
+
+	update_icon()
 
 /obj/vehicle/multitile/proc/toggle_cameras_status(var/on)
 	if(camera)
@@ -208,53 +220,63 @@ GLOBAL_LIST_EMPTY(all_multi_vehicles)
 /obj/vehicle/multitile/update_icon()
 	overlays.Cut()
 
+	icon_state = "[initial(icon_state)][Camo_paintjob ? Camo_paintjob.icon_tag : ""]"
+
+	if(Custom_paintjob)
+		var/image/P = image(icon, icon_state = "[initial(icon_state)]_[Custom_paintjob.icon_tag]")
+		overlays += P
+
 	if(health <= initial(health))
-		var/image/damage_overlay = image(icon, icon_state = "damaged_frame", layer = layer+0.1)
+		var/image/damage_overlay = image(icon, icon_state = "damaged_hull")
 		damage_overlay.alpha = 255 * (1 - (health / initial(health)))
 		overlays += damage_overlay
 
-	var/amt_hardpoints = LAZYLEN(hardpoints)
-	if(amt_hardpoints)
-		var/list/hardpoint_images[amt_hardpoints]
-		var/list/C[HDPT_LAYER_MAX]
+	var/list/C[HDPT_LAYER_MAX]
 
-		// Counting sort the images into a list so we get the hardpoint images sorted by layer
-		for(var/obj/item/hardpoint/H in hardpoints)
-			C[H.hdpt_layer] += 1
+	for(var/obj/item/hardpoint/H in hardpoints)
+		C[H.hdpt_layer] = H
 
-		for(var/i = 2 to HDPT_LAYER_MAX)
-			C[i] += C[i-1]
-
-		for(var/obj/item/hardpoint/H in hardpoints)
-			hardpoint_images[C[H.hdpt_layer]] = H.get_hardpoint_image()
-			C[H.hdpt_layer] -= 1
-
-		for(var/i = 1 to amt_hardpoints)
-			var/image/I = hardpoint_images[i]
-			// get_hardpoint_image() can return a list of images
-			if(istype(I))
-				I.layer = layer + (i*0.1)
-			overlays += I
+	for(var/obj/item/hardpoint/H in C)
+		overlays += H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), FALSE, dir)
 
 	if(clamped)
-		var/image/J = image(icon, icon_state = "vehicle_clamp", layer = layer+0.1)
+		var/image/J = image(icon, icon_state = "vehicle_clamp")
 		overlays += J
 
 //Normal examine() but tells the player what is installed and if it's broken
 /obj/vehicle/multitile/examine(var/mob/user)
 	..()
-
 	for(var/obj/item/hardpoint/H in hardpoints)
 		to_chat(user, "There is \a [H] module installed.")
 		H.examine(user, TRUE)
+	var/msg = ""
 	if(clamped)
-		to_chat(user, "There is a vehicle clamp attached.")
+		msg += "There is a vehicle clamp attached.\n"
 	if(isXeno(user) && interior)
-		var/passengers_amount = interior.passengers_taken_slots
-		for(var/datum/role_reserved_slots/RRS in interior.role_reserved_slots)
-			passengers_amount += RRS.taken
-		if(passengers_amount > 0)
-			to_chat(user, "You can sense approximately [passengers_amount] hosts inside.")
+		var/hosts = interior.passengers_taken_slots
+		if(length(interior.role_reserved_slots))
+			for(var/datum/role_reserved_slots/RRS in interior.role_reserved_slots)
+				hosts += RRS.taken
+		msg += "You can sense approximately [hosts] hosts and [interior.xenos_taken_slots] xenomorphs inside.\n"
+
+	if(Camo_paintjob)
+		msg += "It's covered in <a href='?src=\ref[src];camopaintjob=1'>\"[Camo_paintjob.name]\"</a> camouflage pattern.\n"
+	if(Custom_paintjob)
+		msg += "It sports <a href='?src=\ref[src];custompaintjob=1'>\"[Custom_paintjob.name]\"</a> custom paint job.\n"
+	to_chat(user, SPAN_NOTICE(msg))
+
+/obj/vehicle/multitile/Topic(href, href_list)
+	if(href_list["camopaintjob"])
+		var/msg = "\"[SPAN_HELPFUL(Camo_paintjob.name)]\""
+		msg = msg + "\n" + "\"[Camo_paintjob.desc]\""
+		to_chat(usr, msg)
+
+	if(href_list["custompaintjob"])
+		var/msg = "\"[SPAN_HELPFUL(Custom_paintjob.name)]\""
+		msg = msg + "\n" + "\"[Custom_paintjob.desc]\""
+		to_chat(usr, msg)
+	..()
+	return
 
 /obj/vehicle/multitile/proc/load_hardpoints()
 	return

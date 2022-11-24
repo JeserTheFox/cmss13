@@ -2,10 +2,13 @@
 	name = "M56 Cupola"
 	desc = "A secondary weapon for tanks that shoots bullets"
 
-	icon_state = "m56_cupola"
+	icon_state = "cupola"
 	disp_icon = "tank"
-	disp_icon_state = "m56cupola"
+	disp_icon_state = "cupola"
 	activation_sounds = list('sound/weapons/gun_smartgun1.ogg', 'sound/weapons/gun_smartgun2.ogg', 'sound/weapons/gun_smartgun3.ogg', 'sound/weapons/gun_smartgun4.ogg')
+
+	has_camo = FALSE
+
 
 	health = 350
 	cooldown = 15

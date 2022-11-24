@@ -7,11 +7,15 @@
 #define HDPT_TURRET                 "turret"
 #define HDPT_SPECIAL                "special"	//special pre-installed hardpoints with unique behaviour
 
-#define HDPT_LAYER_WHEELS   1
-#define HDPT_LAYER_SUPPORT  2
-#define HDPT_LAYER_ARMOR    3
-#define HDPT_LAYER_TURRET   4
-#define HDPT_LAYER_MAX      4
+#define HDPT_LAYER_WHEELS			1
+#define HDPT_LAYER_SUPPORT			2
+#define HDPT_LAYER_ARMOR			3
+#define HDPT_LAYER_TURRET			4
+#define HDPT_LAYER_TUR_AMMO			5
+#define HDPT_LAYER_TUR_ARMOR		6
+#define HDPT_LAYER_PRIMARY			7
+#define HDPT_LAYER_SECONDARY		8
+#define HDPT_LAYER_MAX				8
 
 #define VEHICLE_DRIVER              "driver"
 #define VEHICLE_GUNNER      		"primary gunner"
@@ -55,3 +59,14 @@
 #define VEHICLE_CLASS_HEAVY		(1<<4)		//heavy class armor (tank)
 
 #define TANK_POPLOCK				90
+
+/*
+********TANK CAMOS, PAINTJOBS AND VC PLAYTIME REQUIREMENT
+*/
+
+#define CAN_APPLY_CAMO 				1
+#define CAN_APPLY_PAINTJOB	 		2
+
+#define VEHICLE_TANK			1
+#define VEHICLE_APC				2
+#define VEHICLE_TRUCK			3

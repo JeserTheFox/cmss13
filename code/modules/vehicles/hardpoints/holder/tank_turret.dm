@@ -3,12 +3,15 @@
 	desc = "The centerpiece of the tank. Designed to support quick installation and deinstallation of various tank weapon modules. Has inbuilt smoke screen deployment system."
 
 	icon = 'icons/obj/vehicles/tank.dmi'
-	icon_state = "tank_turret_0"
+	icon_state = "turret_0"
 	disp_icon = "tank"
-	disp_icon_state = "tank_turret"
+	disp_icon_state = "turret"
 	activation_sounds = list('sound/weapons/vehicles/smokelauncher_fire.ogg')
 	pixel_x = -48
 	pixel_y = -48
+
+	has_camo = TRUE
+
 
 	density = TRUE	//come on, it's huge
 
@@ -45,7 +48,6 @@
 		/obj/item/hardpoint/secondary/grenade_launcher
 	)
 
-	hdpt_layer = HDPT_LAYER_TURRET
 	px_offsets = list(
 		"1" = list(0, -10),
 		"2" = list(0, 10),
@@ -59,29 +61,126 @@
 	var/rotation_windup = 15
 	// Used during the windup
 	var/rotating = FALSE
+/obj/item/hardpoint/holder/tank_turret/Initialize()
+	..()
+	for(var/datum/vehicle_paintjob/PJ in GLOB.vehicle_paintjobs)
+		if(PJ.name == "Factory Steel")
+			Camo_paintjob = PJ
+			update_icon()
+			break
+
 
 /obj/item/hardpoint/holder/tank_turret/update_icon()
-	var/broken = (health <= 0)
-	icon_state = "tank_turret_[broken]"
+	overlays.Cut()
 
+	//base sprite
+	var/broken = (health <= 0)
+	icon_state = "[disp_icon_state][Camo_paintjob ? Camo_paintjob.icon_tag : ""]_[broken]"
+
+	//add custom paintjob
+	if(Custom_paintjob)
+		var/image/P = image(icon, icon_state = "[disp_icon_state]_[Custom_paintjob.icon_tag]")
+		overlays += P
+
+	//add damage overlay
 	if(health <= initial(health))
 		var/image/damage_overlay = image(icon, icon_state = "damaged_turret")
 		damage_overlay.alpha = 255 * (1 - (health / initial(health)))
 		overlays += damage_overlay
 
-	..()
+	var/list/C[HDPT_LAYER_MAX]
 
-/obj/item/hardpoint/holder/tank_turret/get_icon_image(var/x_offset, var/y_offset, var/new_dir)
+	//layer out our hardpoints
+	for(var/obj/item/hardpoint/H in hardpoints)
+		for(var/i = HDPT_LAYER_TUR_AMMO;i <= HDPT_LAYER_MAX; i++)
+			if(H.hdpt_layer == i || H.misc_icon_layer == i)
+				C[i] = H
+
+	//add overlays in correct order
+	for(var/i = HDPT_LAYER_TUR_AMMO to HDPT_LAYER_MAX)
+		var/obj/item/hardpoint/H = C[i]
+		if(!H)
+			to_world("TURRET LOG: No H at [i] position.")
+			continue
+		//adding additional parts
+		if(H.misc_icon_layer == i)
+			to_world("TURRET LOG: overlays before calling [H]'s misc icon = [LAZYLEN(overlays)]")
+			overlays += H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), TRUE, dir)
+			to_world("TURRET LOG: overlays after calling [H]'s misc icon = [LAZYLEN(overlays)]")
+		else
+			//adding base sprite
+			to_world("TURRET LOG: [H] regular icon called.")
+			overlays += H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), FALSE, dir)
+
+/obj/item/hardpoint/holder/tank_turret/update_icon()
+	overlays.Cut()
+
+	//base sprite
+	var/broken = (health <= 0)
+	icon_state = "[disp_icon_state][Camo_paintjob ? Camo_paintjob.icon_tag : ""]_[broken]"
+
+	//add custom paintjob
+	if(Custom_paintjob)
+		var/image/P = image(icon, icon_state = "[disp_icon_state]_[Custom_paintjob.icon_tag]")
+		overlays += P
+
+	//add damage overlay
+	if(health <= initial(health))
+		var/image/damage_overlay = image(icon, icon_state = "damaged_turret")
+		damage_overlay.alpha = 255 * (1 - (health / initial(health)))
+		overlays += damage_overlay
+
+	var/list/C[HDPT_LAYER_MAX]
+
+	//layer out our hardpoints
+	for(var/obj/item/hardpoint/H in hardpoints)
+		for(var/i = HDPT_LAYER_TUR_AMMO;i <= HDPT_LAYER_MAX; i++)
+			if(H.hdpt_layer == i || H.misc_icon_layer == i)
+				C[i] = H
+
+	//check for armor extra parts
+	var/obj/vehicle/multitile/tank/T = loc
+	if(istype(T))
+		for(var/obj/item/hardpoint/armor/A in T.hardpoints)
+			if(A.misc_icon_layer == HDPT_LAYER_TUR_ARMOR)
+				C[HDPT_LAYER_TUR_ARMOR] = A
+				to_world("TURRET LOG: [A] armor found in owner tank.")
+
+	//add overlays in correct order
+	for(var/i = HDPT_LAYER_TUR_AMMO to HDPT_LAYER_MAX)
+		var/obj/item/hardpoint/H = C[i]
+		if(!H)
+			to_world("TURRET LOG: No H at [i] position.")
+			continue
+		if(H.misc_icon_layer == i)
+			to_world("TURRET LOG: overlays before calling [H]'s misc icon = [LAZYLEN(overlays)]")
+			overlays += H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), TRUE, dir)
+			to_world("TURRET LOG: overlays after calling [H]'s misc icon = [LAZYLEN(overlays)]")
+		else
+			to_world("TURRET LOG: [H] regular icon called.")
+			overlays += H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), FALSE, dir)
+
+/obj/item/hardpoint/holder/tank_turret/get_hardpoint_image(var/paintjob_tag = "", var/get_misc_icons = FALSE, var/direction = dir)
+	var/offset_x = 0
+	var/offset_y = 0
+
+	if(LAZYLEN(px_offsets) && loc)
+		offset_x = px_offsets["[loc.dir]"][1]
+		offset_y = px_offsets["[loc.dir]"][2]
+
+	to_world("TURRET LOG: paintjob_tag = [paintjob_tag]")
+	var/image/I = get_icon_image(offset_x, offset_y, dir, paintjob_tag)
+	return I
+
+/obj/item/hardpoint/holder/tank_turret/get_icon_image(var/x_offset, var/y_offset, var/new_dir, var/paintjob_tag = "")
+	update_icon()
 	var/icon_state_suffix = "0"
 	if(health <= 0)
 		icon_state_suffix = "1"
 
-	var/image/I = image(icon = disp_icon, icon_state = "[disp_icon_state]_[icon_state_suffix]", pixel_x = x_offset, pixel_y = y_offset, dir = new_dir)
+	var/image/I = image(icon = disp_icon, icon_state = "[disp_icon_state][Camo_paintjob ? Camo_paintjob.icon_tag : ""]_[icon_state_suffix]", pixel_x = x_offset, pixel_y = y_offset, dir = new_dir)
 
-	if(health <= initial(health))
-		var/image/damage_overlay = image(icon, icon_state = "damaged_turret")
-		damage_overlay.alpha = 255 * (1 - (health / initial(health)))
-		I.overlays += damage_overlay
+	I.overlays += overlays
 
 	return I
 

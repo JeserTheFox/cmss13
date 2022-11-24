@@ -2,10 +2,12 @@
 	name = "M92T Grenade Launcher"
 	desc = "A secondary weapon for tanks that shoots grenades."
 
-	icon_state = "glauncher"
+	icon_state = "grenade"
 	disp_icon = "tank"
-	disp_icon_state = "glauncher"
+	disp_icon_state = "grenade"
 	activation_sounds = list('sound/weapons/gun_m92_attachable.ogg')
+
+	has_camo = TRUE
 
 	health = 500
 	cooldown = 30

@@ -3,7 +3,7 @@
 	name = "M577-MED Armored Personnel Carrier"
 	desc = "A medical modification of the M577 Armored Personnel Carrier. An armored transport with four big wheels. Designed as a reliable mobile triage that stores a significant amount of medical supplies for in-field resupplying of medics. Entrances on the sides."
 
-	icon_state = "apc_base_med"
+	icon_state = "hull_med"
 
 	interior_map = "apc_med"
 

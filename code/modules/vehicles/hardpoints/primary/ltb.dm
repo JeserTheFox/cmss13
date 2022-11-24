@@ -2,10 +2,12 @@
 	name = "LTB Cannon"
 	desc = "A primary cannon for tanks that shoots explosive rounds"
 
-	icon_state = "ltb_cannon"
+	icon_state = "ltb"
 	disp_icon = "tank"
-	disp_icon_state = "ltb_cannon"
+	disp_icon_state = "ltb"
 	activation_sounds = list('sound/weapons/vehicles/cannon_fire1.ogg', 'sound/weapons/vehicles/cannon_fire2.ogg')
+
+	has_camo = TRUE
 
 	health = 500
 	cooldown = 200

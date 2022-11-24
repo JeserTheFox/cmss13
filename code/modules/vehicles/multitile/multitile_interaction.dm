@@ -79,7 +79,6 @@
 						var/obj/item/explosive/grenade/nade = dragged_atom
 						if(!nade.active)		//very creative, but no.
 							break
-
 					handle_fitting_pulled_atom(user, dragged_atom)
 					return
 		else
@@ -125,6 +124,10 @@
 		else
 			playsound(user, 'sound/items/detector.ogg', 60, FALSE, 7, 2)
 			to_chat(user, SPAN_WARNING("\The [MD] can't pick up any signatures, so the vehicle should be empty. In theory."))
+		return
+
+	if(istype(O, /obj/item/tool/spray_gun))
+		handle_spray_gun(O, user)
 		return
 
 	if(user.a_intent != INTENT_HARM)

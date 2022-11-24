@@ -2,10 +2,14 @@
 	name = "AC3-E Autocannon"
 	desc = "A primary autocannon for tanks that shoots explosive flak rounds"
 
-	icon_state = "ace_autocannon"
+	icon_state = "autocannon"
 	disp_icon = "tank"
-	disp_icon_state = "ace_autocannon"
+	disp_icon_state = "autocannon"
 	activation_sounds = list('sound/weapons/vehicles/autocannon_fire.ogg')
+
+	misc_icon_state = "ammo_"
+	misc_icon_layer = HDPT_LAYER_TUR_AMMO
+	has_camo = TRUE
 
 	health = 500
 	cooldown = 7

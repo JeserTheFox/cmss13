@@ -4,7 +4,7 @@
 
 	icon_state = "artillery"
 	disp_icon = "tank"
-	disp_icon_state = "artillerymod"
+	disp_icon_state = "artillery"
 
 	health = 250
 

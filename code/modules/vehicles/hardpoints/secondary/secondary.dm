@@ -3,6 +3,7 @@
 	desc = "Smaller support gun"
 
 	slot = HDPT_SECONDARY
+	hdpt_layer = HDPT_LAYER_SECONDARY
 
 	damage_multiplier = 0.125
 

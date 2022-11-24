@@ -2,9 +2,9 @@
 	name = "Integrated Weapons Sensor Array"
 	desc = "Improves the accuracy and fire rate of all onboard weapons"
 
-	icon_state = "warray"
+	icon_state = "iwsa"
 	disp_icon = "tank"
-	disp_icon_state = "warray"
+	disp_icon_state = "iwsa"
 
 	health = 250
 

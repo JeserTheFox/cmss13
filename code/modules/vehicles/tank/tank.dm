@@ -1,9 +1,11 @@
+//Tank consists of two main parts: the base, called Hull or Chassis and a holder hardpoint module Turret, which bears weapon modules and can be rotated by a Gunner.
+
 /obj/vehicle/multitile/tank
 	name = "M34A2 Longstreet Light Tank"
 	desc = "A giant piece of armor with a big gun, you know what to do. Entrance in the back."
 
 	icon = 'icons/obj/vehicles/tank.dmi'
-	icon_state = "tank_base"
+	icon_state = "chassis"
 	pixel_x = -48
 	pixel_y = -48
 
@@ -75,6 +77,8 @@
 
 	explosive_resistance = 400
 
+	supports_paintjobs = TRUE
+
 /obj/vehicle/multitile/tank/initialize_cameras(var/change_tag = FALSE)
 	if(!camera)
 		camera = new /obj/structure/machinery/camera/vehicle(src)
@@ -86,16 +90,6 @@
 		camera.c_tag = "#[rand(1,100)] M34A2 Tank"
 		if(camera_int)
 			camera_int.c_tag = camera.c_tag + " interior" //this fluff allows it to be at the start of cams list
-
-/obj/vehicle/multitile/tank/load_role_reserved_slots()
-	var/datum/role_reserved_slots/RRS = new
-	RRS.category_name = "Crewmen"
-	RRS.roles = list(JOB_CREWMAN, JOB_WO_CREWMAN, JOB_UPP_CREWMAN, JOB_PMC_CREWMAN)
-	RRS.total = 2
-	role_reserved_slots += RRS
-
-/obj/vehicle/multitile/tank/load_hardpoints()
-	add_hardpoint(new /obj/item/hardpoint/holder/tank_turret)
 
 /obj/vehicle/multitile/tank/add_seated_verbs(var/mob/living/M, var/seat)
 	if(!M.client)

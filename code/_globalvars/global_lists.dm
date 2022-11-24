@@ -111,6 +111,7 @@ var/global/list/z1turfs = list()
 GLOBAL_LIST_INIT(explosive_antigrief_exempt_areas, list(
 	//non currently
 ))
+GLOBAL_LIST_INIT(vehicle_paintjobs, generate_vehicle_paintjob())
 
 GLOBAL_LIST_EMPTY(loose_yautja_gear)
 GLOBAL_LIST_EMPTY(tracked_yautja_gear) // list of pred gear with a tracking element attached
@@ -350,6 +351,25 @@ var/global/list/paramslist_cache = list()
 	for(var/obj/item/clothing/yautja_cape/cape_type as anything in typesof(/obj/item/clothing/yautja_cape))
 		cape_list[initial(cape_type.name)] = cape_type
 	return cape_list
+
+/proc/generate_vehicle_paintjob()
+	. = list()
+	.["paintjobs_datum"] = list()
+	for(var/type in subtypesof(/datum/vehicle_paintjob))
+		.["paintjobs_datum"][type] = new type()
+
+	for(var/paintjob in .["paintjobs_datum"])
+		var/list/entry = list()
+		var/datum/vehicle_paintjob/P = paintjob
+		entry["name"] = P.name
+		entry["desc"] = P.desc
+		entry["vehicles"] = P.vehicle
+		entry["maps"] = P.maps
+		entry["icon_tag"] = P.icon_tag
+		entry["play_time_req"] = P.play_time_req
+		entry["type"] = P.type
+
+		. += entry
 
 
 /* // Uncomment to debug chemical reaction list.

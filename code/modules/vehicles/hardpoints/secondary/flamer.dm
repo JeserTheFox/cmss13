@@ -7,6 +7,8 @@
 	disp_icon_state = "flamer"
 	activation_sounds = list('sound/weapons/vehicles/flamethrower.ogg')
 
+	has_camo = TRUE
+
 	health = 300
 	cooldown = 30
 	accuracy = 0.68

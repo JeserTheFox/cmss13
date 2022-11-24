@@ -2,9 +2,11 @@
 	name = "TOW Launcher"
 	desc = "A secondary weapon for tanks that shoots rockets"
 
-	icon_state = "tow_launcher"
+	icon_state = "tow"
 	disp_icon = "tank"
-	disp_icon_state = "towlauncher"
+	disp_icon_state = "tow"
+
+	has_camo = TRUE
 
 	health = 500
 	cooldown = 150

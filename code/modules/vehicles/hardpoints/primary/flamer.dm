@@ -2,10 +2,14 @@
 	name = "DRG-N Offensive Flamer Unit"
 	desc = "A primary weapon for the tank that spews fire everywhere."
 
-	icon_state = "drgn_flamer"
+	icon_state = "dragon"
 	disp_icon = "tank"
-	disp_icon_state = "drgn_flamer"
+	disp_icon_state = "dragon"
 	activation_sounds = list('sound/weapons/vehicles/flamethrower.ogg')
+
+	misc_icon_state = "ammo_"
+	misc_icon_layer = HDPT_LAYER_TUR_AMMO
+	has_camo = TRUE
 
 	health = 400
 	cooldown = 20

@@ -6,6 +6,8 @@
 	disp_icon = "tank"
 	disp_icon_state = "treads"
 
+	has_camo = TRUE
+
 	slot = HDPT_TREADS
 
 	health = 500

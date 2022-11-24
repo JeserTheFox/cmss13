@@ -2,6 +2,11 @@
 	name = "holder hardpoint"
 	desc = "Holder for other hardpoints"
 
+	hdpt_layer = HDPT_LAYER_TURRET
+
+	var/datum/vehicle_paintjob/Camo_paintjob = null
+	var/datum/vehicle_paintjob/Custom_paintjob = null
+
 	// List of types of hardpoints that this hardpoint can hold
 	var/list/accepted_hardpoints
 
@@ -15,22 +20,48 @@
 
 /obj/item/hardpoint/holder/update_icon()
 	overlays.Cut()
+	var/list/C[HDPT_LAYER_MAX]
 	for(var/obj/item/hardpoint/H in hardpoints)
-		var/image/I = H.get_hardpoint_image()
+		C[H.hdpt_layer] = H
+	for(var/obj/item/hardpoint/H in C)
+		var/image/I = H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), TRUE, dir)
 		overlays += I
 
 /obj/item/hardpoint/holder/examine(var/mob/user, integrity_only = FALSE)
+	var/msg = ""
 
 	if(!integrity_only)
 		..()
 	else
-		if(health <= 0)
-			to_chat(user, "It's busted!")
-		else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_TRAINED)))
-			to_chat(user, "It's at [round(get_integrity_percent(), 1)]% integrity!")
+		for(var/obj/item/hardpoint/H in hardpoints)
+			msg += "There is a [H] installed on \the [src].\n"
+			msg += H.examine(user, TRUE)
+		return msg
+	if(health <= 0)
+		msg += "It's busted!\n"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += "It's at [round(get_integrity_percent(), 1)]% integrity!\n"
 	for(var/obj/item/hardpoint/H in hardpoints)
-		to_chat(user, "There is a [H] module installed on \the [src].")
-		H.examine(user, TRUE)
+		msg += "There is a [H] installed on \the [src].\n"
+		msg += H.examine(user, TRUE)
+	if(Camo_paintjob)
+		msg += "It's covered in <a href='?src=\ref[src];camopaintjob=1'>\"[Camo_paintjob.name]\"</a> camouflage pattern.\n"
+	if(Custom_paintjob)
+		msg += "It sports <a href='?src=\ref[src];custompaintjob=1'>\"[Custom_paintjob.name]\"</a> custom paint job.\n"
+	to_chat(user, msg)
+
+/obj/item/hardpoint/holder/Topic(href, href_list)
+	if(href_list["camopaintjob"])
+		var/msg = Camo_paintjob.name
+		msg = msg + "\n" + Camo_paintjob.desc
+		to_chat(usr, SPAN_INFO(msg))
+
+	if(href_list["custompaintjob"])
+		var/msg = Custom_paintjob.name
+		msg = msg + "\n" + Custom_paintjob.desc
+		to_chat(usr, SPAN_INFO(msg))
+	..()
+	return
 
 /obj/item/hardpoint/holder/get_hardpoint_info()
 	..()
@@ -48,6 +79,8 @@
 /obj/item/hardpoint/holder/on_install(var/obj/vehicle/multitile/V)
 	for(var/obj/item/hardpoint/HP in hardpoints)
 		HP.owner = V
+	if(V.Camo_paintjob && V.Camo_paintjob != Camo_paintjob)
+		Camo_paintjob = V.Camo_paintjob
 	return
 
 /obj/item/hardpoint/holder/proc/can_install(var/obj/item/hardpoint/H)
@@ -163,11 +196,11 @@
 	return null
 
 // Modified to return a list of all images tied to the holder
-/obj/item/hardpoint/holder/get_hardpoint_image()
+/obj/item/hardpoint/holder/get_hardpoint_image(var/paintjob_tag = "")
 	var/image/I = ..()
 	var/list/images = list(I)
 	for(var/obj/item/hardpoint/H in hardpoints)
-		var/image/HI = H.get_hardpoint_image()
+		var/image/HI = H.get_hardpoint_image((Camo_paintjob ? Camo_paintjob.icon_tag : ""), TRUE, dir)
 		if(LAZYLEN(px_offsets) && loc && HI)
 			HI.pixel_x += px_offsets["[loc.dir]"][1]
 			HI.pixel_y += px_offsets["[loc.dir]"][2]

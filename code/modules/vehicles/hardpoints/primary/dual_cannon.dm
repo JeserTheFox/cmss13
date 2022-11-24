@@ -6,8 +6,10 @@
 
 	icon_state = "dual_cannon"
 	disp_icon = "apc"
-	disp_icon_state = "dualcannon"
+	disp_icon_state = "dual_cannon"
 	activation_sounds = list('sound/weapons/vehicles/dual_autocannon_fire.ogg')
+
+	has_camo = TRUE
 
 	damage_multiplier = 0.2
 

@@ -2,9 +2,11 @@
 	name = "Ballistic Armor"
 	desc = "Protects the vehicle from high-penetration weapons"
 
-	icon_state = "ballistic_armor"
+	icon_state = "ballistic"
 	disp_icon = "tank"
-	disp_icon_state = "ballistic_armor"
+	disp_icon_state = "ballistic"
+
+	misc_icon_state = "turret_"
 
 	type_multipliers = list(
 		"bullet" = 0.67,

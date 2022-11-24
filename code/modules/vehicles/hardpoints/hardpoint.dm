@@ -32,6 +32,13 @@
 	var/disp_icon //This also differentiates tank vs apc vs other
 	var/disp_icon_state
 
+	//additional pieces of hardpoint, mostly for turret (currently for primary weapons ammo pieces and turret armor parts)
+	var/misc_icon_state = ""
+	var/misc_icon_layer = 0
+
+	//used to determine whether it should use tank's camo tag
+	var/has_camo = FALSE
+
 	// List of pixel offsets for each direction
 	var/list/px_offsets
 
@@ -327,10 +334,12 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 /obj/item/hardpoint/examine(mob/user, var/integrity_only = FALSE)
 	if(!integrity_only)
 		..()
+	var/msg = "This is \the [name]. \n"
+
 	if(health <= 0)
-		to_chat(user, "It's busted!")
-	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_TRAINED)))
-		to_chat(user, "It's at [round(get_integrity_percent(), 1)]% integrity!")
+		msg += "<font color=\"red\">It's busted!</font>"
+	else if(isobserver(user) || (ishuman(user) && skillcheck(user, SKILL_ENGINEER, SKILL_ENGINEER_ENGI)))
+		msg += "It's at <font color=\"green\">[round(get_integrity_percent(), 1)]%</font> integrity!"
 
 //reloading hardpoint - take mag from backup clips and replace current ammo with it. Will change in future. Called via weapons loader
 /obj/item/hardpoint/proc/reload(var/mob/user)
@@ -539,22 +548,34 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 //------ICON PROCS----------
 //-----------------------------
 
-//Returns an image for the hardpoint
-/obj/item/hardpoint/proc/get_hardpoint_image()
+// Returns an image for the hardpoint
+/obj/item/hardpoint/proc/get_hardpoint_image(var/paintjob_tag = "", var/get_misc_icons = FALSE, var/direction = dir)
 	var/offset_x = 0
 	var/offset_y = 0
 
-	if(LAZYLEN(px_offsets) && loc)
+	if(LAZYLEN(px_offsets) && loc && !get_misc_icons)
 		offset_x = px_offsets["[loc.dir]"][1]
 		offset_y = px_offsets["[loc.dir]"][2]
 
-	var/image/I = get_icon_image(offset_x, offset_y, dir)
-	return I
+	if(get_misc_icons)
+		to_world("HARDPOINT LOG: Misc parts called with direction: [dir2text(direction)]")
+		var/image/I = get_icon_image(offset_x, offset_y, direction, paintjob_tag, get_misc_icons)
+		if(!I)
+			to_world("HARDPOINT LOG: No Icon returned")
+		return I
+	else
+		to_world("HARDPOINT LOG: paintjob_tag = [paintjob_tag]")
+		var/image/I = get_icon_image(offset_x, offset_y, dir, paintjob_tag)
+		return I
 
 //Returns the image object to overlay onto the root object
-/obj/item/hardpoint/proc/get_icon_image(var/x_offset, var/y_offset, var/new_dir)
-	var/is_broken = health <= 0
-	var/image/I = image(icon = disp_icon, icon_state = "[disp_icon_state]_[is_broken ? "1" : "0"]", pixel_x = x_offset, pixel_y = y_offset, dir = new_dir)
+/obj/item/hardpoint/proc/get_icon_image(var/x_offset, var/y_offset, var/new_dir, var/paintjob_tag = "", var/get_misc_icons = FALSE)
+	var/icon_state_suffix = "0"
+	if(health <= 0)
+		icon_state_suffix = "1"
+
+	var/image/I = image(icon = disp_icon, icon_state = "[disp_icon_state][has_camo ? paintjob_tag : ""]_[get_misc_icons ? misc_icon_state : ""][icon_state_suffix]", pixel_x = x_offset, pixel_y = y_offset, dir = new_dir)
+
 	switch(round((health / initial(health)) * 100))
 		if(0 to 20)
 			I.color = "#4e4e4e"
@@ -566,6 +587,8 @@ obj/item/hardpoint/proc/remove_buff(var/obj/vehicle/multitile/V)
 			I.color = "#bebebe"
 		else
 			I.color = null
+
+	to_world("HARDPOINT LOG: icon name: [disp_icon_state][has_camo ? paintjob_tag : ""]_[get_misc_icons ? misc_icon_state : ""][icon_state_suffix]")
 	return I
 
 // debug proc
