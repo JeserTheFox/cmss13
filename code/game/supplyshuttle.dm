@@ -347,6 +347,7 @@ var/datum/controller/supply/supply_controller = new()
 	var/list/random_supply_packs = list()
 	//shuttle movement
 	var/datum/shuttle/ferry/supply/shuttle
+	var/datum/shuttle/ferry/supply/vehicle_shuttle
 
 	//dropship part fabricator's points, so we can reference them globally (mostly for DEFCON)
 	var/dropship_points = 10000 //gains roughly 18 points per minute | Original points of 5k doubled due to removal of prespawned ammo.
@@ -446,6 +447,8 @@ var/datum/controller/supply/supply_controller = new()
 	if(istype(A,/obj/item/device/radio/beacon))
 		return 1
 	if(istype(A,/obj/item/stack/sheet/mineral/phoron))
+		return 1
+	if(istype(A,/obj/vehicle))
 		return 1
 
 	for(var/i=1, i<=A.contents.len, i++)
@@ -802,7 +805,7 @@ var/datum/controller/supply/supply_controller = new()
 	if(href_list["send"])
 		if(shuttle.at_station())
 			if (shuttle.forbidden_atoms_check())
-				temp = "For safety reasons, the Automated Storage and Retrieval System cannot store live organisms, classified nuclear weaponry or homing beacons.<BR><BR><A href='?src=\ref[src];mainmenu=1'>OK</A>"
+				temp = "<font color=\"red\"><b>For safety reasons, the Automated Storage and Retrieval System cannot store live organisms, classified nuclear weaponry or homing beacons. USCM vehicles must be stored in a vehicle section of ASRS.</b></font><BR><BR><A href='?src=\ref[src];mainmenu=1'>OK</A>"
 			else
 				shuttle.launch(src)
 				temp = "Lowering platform. \[[SPAN_WARNING("<A href='?src=\ref[src];force_send=1'>Force</A>")]\]<BR><BR><A href='?src=\ref[src];mainmenu=1'>OK</A>"
@@ -997,155 +1000,3 @@ var/datum/controller/supply/supply_controller = new()
 	status_signal.data["command"] = command
 
 	frequency.post_signal(src, status_signal)
-
-/obj/structure/machinery/computer/supplycomp/vehicle
-	name = "vehicle ASRS console"
-	desc = "A console for an Automated Storage and Retrieval System. This one is tied to a deep storage unit for vehicles."
-	req_access = list(ACCESS_MARINE_CREWMAN)
-	// Can only retrieve one vehicle per round
-	var/spent = FALSE
-	var/tank_unlocked = FALSE
-	var/list/allowed_roles = list(JOB_CREWMAN)
-
-	var/list/vehicles
-
-/datum/vehicle_order
-	var/name = "vehicle order"
-
-	var/obj/vehicle/ordered_vehicle
-	var/unlocked = TRUE
-	var/failure_message = "<font color=\"red\"><b>Not enough resources were allocated to repair this vehicle during this operation.</b></font><br>"
-
-/datum/vehicle_order/proc/has_vehicle_lock()
-	return FALSE
-
-/datum/vehicle_order/proc/on_created(var/obj/vehicle/V)
-	return
-
-/datum/vehicle_order/tank
-	name = "M34A2 Longstreet Light Tank"
-	ordered_vehicle = /obj/vehicle/multitile/tank/decrepit
-
-/datum/vehicle_order/tank/has_vehicle_lock()
-	return
-
-/datum/vehicle_order/tank/on_created(var/obj/vehicle/multitile/tank/decrepit/tank)
-	tank.req_one_access = list()
-
-/datum/vehicle_order/apc
-	name = "M577 Armored Personnel Carrier"
-	ordered_vehicle = /obj/vehicle/multitile/apc/decrepit
-
-/datum/vehicle_order/apc/med
-	name = "M577-MED Armored Personnel Carrier"
-	ordered_vehicle = /obj/vehicle/multitile/apc/medical/decrepit
-
-/datum/vehicle_order/apc/cmd
-	name = "M577-CMD Armored Personnel Carrier"
-	ordered_vehicle = /obj/vehicle/multitile/apc/command/decrepit
-
-/obj/structure/machinery/computer/supplycomp/vehicle/Initialize()
-	. = ..()
-
-	vehicles = list(
-		new/datum/vehicle_order/apc(),
-		new/datum/vehicle_order/apc/med(),
-		new/datum/vehicle_order/apc/cmd()
-	)
-
-	if(!VehicleElevatorConsole)
-		VehicleElevatorConsole = src
-
-/obj/structure/machinery/computer/supplycomp/vehicle/attack_hand(var/mob/living/carbon/human/H as mob)
-	if(inoperable())
-		return
-
-	if(LAZYLEN(allowed_roles) && !allowed_roles.Find(H.job))		//replaced Z-level restriction with role restriction.
-		to_chat(H, SPAN_WARNING("This console isn't for you."))
-		return
-
-	if(!allowed(H))
-		to_chat(H, SPAN_DANGER("Access Denied."))
-		return
-
-	H.set_interaction(src)
-	post_signal("supply_vehicle")
-
-	var/dat = ""
-
-	if(!SSshuttle.vehicle_elevator)
-		return
-
-	dat += "Platform position: "
-	if (SSshuttle.vehicle_elevator.timeLeft())
-		dat += "Moving"
-	else
-		if(is_mainship_level(SSshuttle.vehicle_elevator.z))
-			dat += "Raised"
-		else
-			dat += "Lowered"
-	dat += "<br><hr>"
-
-	if(spent)
-		dat += "No vehicles are available for retrieval."
-	else
-		dat += "Available vehicles:<br>"
-
-		for(var/d in vehicles)
-			var/datum/vehicle_order/VO = d
-
-			if(VO.has_vehicle_lock())
-				dat += VO.failure_message
-			else
-				dat += "<a href='?src=\ref[src];get_vehicle=\ref[VO]'>[VO.name]</a><br>"
-
-	show_browser(H, dat, "Automated Storage and Retrieval System", "computer", "size=575x450")
-
-/obj/structure/machinery/computer/supplycomp/vehicle/Topic(href, href_list)
-	. = ..()
-	if(.)
-		return
-	if(!is_mainship_level(z))
-		return
-	if(spent)
-		return
-	if(!supply_controller)
-		world.log << "## ERROR: Eek. The supply_controller controller datum is missing somehow."
-		return
-
-	if (!SSshuttle.vehicle_elevator)
-		world.log << "## ERROR: Eek. The supply/elevator datum is missing somehow."
-		return
-
-	if(!is_admin_level(SSshuttle.vehicle_elevator.z))
-		return
-
-	if(ismaintdrone(usr))
-		return
-
-	if(isturf(loc) && ( in_range(src, usr) || ishighersilicon(usr) ) )
-		usr.set_interaction(src)
-
-	if(href_list["get_vehicle"])
-		if(is_mainship_level(SSshuttle.vehicle_elevator.z))
-			return
-		// dunno why the +1 is needed but the vehicles spawn off-center
-		var/turf/middle_turf = get_turf(SSshuttle.vehicle_elevator)
-
-		var/obj/vehicle/multitile/ordered_vehicle
-
-		var/datum/vehicle_order/VO = locate(href_list["get_vehicle"])
-
-		if(!VO) return
-		if(VO.has_vehicle_lock()) return
-
-		ordered_vehicle = new VO.ordered_vehicle(middle_turf)
-		SSshuttle.vehicle_elevator.request(SSshuttle.getDock("almayer vehicle"))
-
-		VO.on_created(ordered_vehicle)
-
-		SEND_GLOBAL_SIGNAL(COMSIG_GLOB_VEHICLE_ORDERED, ordered_vehicle)
-		spent = TRUE
-
-	add_fingerprint(usr)
-	updateUsrDialog()

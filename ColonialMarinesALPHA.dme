@@ -510,6 +510,7 @@
 #include "code\game\smoothwall.dm"
 #include "code\game\sound.dm"
 #include "code\game\supplyshuttle.dm"
+#include "code\game\vehicle_supply_elevator.dm"
 #include "code\game\world.dm"
 #include "code\game\area\admin_level.dm"
 #include "code\game\area\almayer.dm"

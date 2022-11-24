@@ -1,8 +1,8 @@
 GLOBAL_LIST_EMPTY(command_apc_list)
 
 /obj/vehicle/multitile/apc
-	name = "M577 Armored Personnel Carrier"
-	desc = "An M577 Armored Personnel Carrier. An armored transport with four big wheels. Entrances on the sides and back."
+	name = "\improper M577 Armored Personnel Carrier"
+	desc = "An M577 Armored Personnel Carrier. An armored transport with four big wheels. Has 2 M56 Firing Port Weapons installed near side doors. Entrances on the sides and back."
 
 	icon = 'icons/obj/vehicles/apc.dmi'
 	icon_state = "apc_base"

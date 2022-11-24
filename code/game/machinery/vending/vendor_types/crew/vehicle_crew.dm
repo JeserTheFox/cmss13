@@ -6,24 +6,31 @@
 	icon = 'icons/obj/structures/machinery/vending_64x32.dmi'
 	icon_state = "vehicle_gear"
 
-	req_access = list(ACCESS_MARINE_CREWMAN)
-	vendor_role = list(JOB_CREWMAN)
+	req_access = list()
+	vendor_role = list(JOB_CREWMAN, JOB_PMC_CREWMAN, JOB_UPP_CREWMAN)
 	bound_width = 64
 
 	unslashable = TRUE
 
-	vend_delay = 40
+	vend_delay = 10
 	vend_sound = 'sound/machines/medevac_extend.ogg'
 
-	var/selected_vehicle
-	var/budget_points = 0
-	var/available_categories = VEHICLE_ALL_AVAILABLE
+	//for which vehicles we should show modules
+	var/currently_retrieved_vehicles = VEHICLE_RETRIEVED_NONE
+	//what vehicles were retrieved this round, so we won't give free modules for this vehicle type again.
+	var/all_retrieved_vehicles = VEHICLE_RETRIEVED_NONE
+	//points themselves
+	var/budget_points = 1000
+	//available categories for free loadout choice
+	var/available_loadout_categories = NO_FLAGS
 
 /obj/structure/machinery/cm_vending/gear/vehicle_crew/Initialize(mapload, ...)
 	. = ..()
-	RegisterSignal(SSdcs, COMSIG_GLOB_VEHICLE_ORDERED, .proc/populate_products)
-	if(!VehicleGearConsole)
-		VehicleGearConsole = src
+	RegisterSignal(SSdcs, COMSIG_GLOB_VEHICLE_ORDERED, .proc/handle_vehicle_order)
+	RegisterSignal(SSdcs, COMSIG_GLOB_VEHICLE_REFUNDED, .proc/handle_vehicle_refund)
+
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/proc/set_global_vehicle_gear_vendor()
+	VehicleGearConsole = src
 
 /obj/structure/machinery/cm_vending/gear/vehicle_crew/get_appropriate_vend_turf(var/mob/living/carbon/human/H)
 	var/turf/T = loc
@@ -36,74 +43,136 @@
 /obj/structure/machinery/cm_vending/gear/vehicle_crew/flip_back()
 	return
 
-/obj/structure/machinery/cm_vending/ex_act(severity)
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/ex_act(severity)
 	if(severity > EXPLOSION_THRESHOLD_LOW)
 		if(prob(25))
 			malfunction()
 			return
 
-/obj/structure/machinery/cm_vending/gear/vehicle_crew/proc/populate_products(datum/source, obj/vehicle/multitile/V)
+//you are allowed to choose starting loadout for free only once per vehicle class (all APCs are of same class)
+//this is why this proc is needed
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/proc/handle_vehicle_order(datum/source, obj/vehicle/multitile/V)
 	SIGNAL_HANDLER
-	UnregisterSignal(SSdcs, COMSIG_GLOB_VEHICLE_ORDERED)
+	if(istype(V, /obj/vehicle/multitile/tank))
+		//we write down that we currently have tank retrieved
+		currently_retrieved_vehicles |= VEHICLE_RETRIEVED_TANK
+		//if we already retrieved tank before, we already gave 1 free lodout choice, so no more free stuff
+		if(~all_retrieved_vehicles & VEHICLE_RETRIEVED_TANK)
+			available_loadout_categories |= CREWMEN_CAN_TAKE_TANK_PARTS
+		all_retrieved_vehicles |= VEHICLE_RETRIEVED_TANK
 
-	selected_vehicle = "APC"
-	available_categories &= ~(VEHICLE_ARMOR_AVAILABLE|VEHICLE_INTEGRAL_AVAILABLE)	//APC lacks these, so we need to remove these flags to be able to access spare parts section
+	else if(istype(V, /obj/vehicle/multitile/apc/medical))
+		currently_retrieved_vehicles |= VEHICLE_RETRIEVED_APC_MED
+		//if we already retrieved ANY type of APC before, we already gave 1 free lodout choice, so no more free stuff
+		if(!(all_retrieved_vehicles & (VEHICLE_RETRIEVED_APC|VEHICLE_RETRIEVED_APC_MED|VEHICLE_RETRIEVED_APC_CMD)))
+			available_loadout_categories |= CREWMEN_CAN_TAKE_APC_PARTS
+		all_retrieved_vehicles |= VEHICLE_RETRIEVED_APC_MED
 
-/obj/structure/machinery/cm_vending/gear/vehicle_crew/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 0)
+	else if(istype(V, /obj/vehicle/multitile/apc/command))
+		currently_retrieved_vehicles |= VEHICLE_RETRIEVED_APC_CMD
+		if(!(all_retrieved_vehicles & (VEHICLE_RETRIEVED_APC|VEHICLE_RETRIEVED_APC_MED|VEHICLE_RETRIEVED_APC_CMD)))
+			available_loadout_categories |= CREWMEN_CAN_TAKE_APC_PARTS
+		all_retrieved_vehicles |= VEHICLE_RETRIEVED_APC_CMD
 
-	if(!ishuman(user))
-		return
-	var/list/display_list = list()
+	else if(istype(V, /obj/vehicle/multitile/apc))
+		currently_retrieved_vehicles |= VEHICLE_RETRIEVED_APC
+		if(!(all_retrieved_vehicles & (VEHICLE_RETRIEVED_APC|VEHICLE_RETRIEVED_APC_MED|VEHICLE_RETRIEVED_APC_CMD)))
+			available_loadout_categories |= CREWMEN_CAN_TAKE_APC_PARTS
+		all_retrieved_vehicles |= VEHICLE_RETRIEVED_APC
 
-	if(selected_vehicle == "TANK")
-		if(available_categories)
-			listed_products = list(
-				list("[selected_vehicle] STARTING KIT SELECTION:", 0, null, null, null),
+	else if(istype(V, /obj/vehicle/multitile/van))
+		currently_retrieved_vehicles |= VEHICLE_RETRIEVED_TRUCKS
+		if(~all_retrieved_vehicles & VEHICLE_RETRIEVED_TRUCKS)
+			available_loadout_categories |= CREWMEN_CAN_TAKE_TRUCK_WHEELS
+		all_retrieved_vehicles |= VEHICLE_RETRIEVED_TRUCKS
 
-				list("INTEGRAL PARTS", 0, null, null, null),
-				list("M34A2-A Multipurpose Turret", 0, /obj/effect/essentials_set/tank/turret, VEHICLE_INTEGRAL_AVAILABLE, VENDOR_ITEM_MANDATORY),
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/proc/handle_vehicle_refund(datum/source, obj/vehicle/multitile/V)
+	SIGNAL_HANDLER
 
-				list("PRIMARY WEAPON", 0, null, null, null),
-				list("AC3-E Autocannon", 0, /obj/effect/essentials_set/tank/autocannon, VEHICLE_PRIMARY_AVAILABLE, VENDOR_ITEM_RECOMMENDED),
-				list("DRG-N Offensive Flamer Unit", 0, /obj/effect/essentials_set/tank/dragonflamer, VEHICLE_PRIMARY_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("LTAA-AP Minigun", 0, /obj/effect/essentials_set/tank/gatling, VEHICLE_PRIMARY_AVAILABLE, VENDOR_ITEM_REGULAR),
+	if(istype(V, /obj/vehicle/multitile/tank))
+		currently_retrieved_vehicles &= ~VEHICLE_RETRIEVED_TANK
 
-				list("SECONDARY WEAPON", 0, null, null, null),
-				list("M92T Grenade Launcher", 0, /obj/effect/essentials_set/tank/tankgl, VEHICLE_SECONDARY_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("M56 Cupola", 0, /obj/effect/essentials_set/tank/m56cupola, VEHICLE_SECONDARY_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("LZR-N Flamer Unit", 0, /obj/effect/essentials_set/tank/tankflamer, VEHICLE_SECONDARY_AVAILABLE, VENDOR_ITEM_RECOMMENDED),
+	else if(istype(V, /obj/vehicle/multitile/apc/medical))
+		currently_retrieved_vehicles &= ~VEHICLE_RETRIEVED_APC_MED
 
-				list("SUPPORT MODULE", 0, null, null, null),
-				list("Artillery Module", 0, /obj/item/hardpoint/support/artillery_module, VEHICLE_SUPPORT_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Integrated Weapons Sensor Array", 0, /obj/item/hardpoint/support/weapons_sensor, VEHICLE_SUPPORT_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Overdrive Enhancer", 0, /obj/item/hardpoint/support/overdrive_enhancer, VEHICLE_SUPPORT_AVAILABLE, VENDOR_ITEM_RECOMMENDED),
+	else if(istype(V, /obj/vehicle/multitile/apc/command))
+		currently_retrieved_vehicles &= ~VEHICLE_RETRIEVED_APC_CMD
 
-				list("ARMOR", 0, null, null, null),
-				list("Ballistic Armor", 0, /obj/item/hardpoint/armor/ballistic, VEHICLE_ARMOR_AVAILABLE, VENDOR_ITEM_RECOMMENDED),
-				list("Caustic Armor", 0, /obj/item/hardpoint/armor/caustic, VEHICLE_ARMOR_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Concussive Armor", 0, /obj/item/hardpoint/armor/concussive, VEHICLE_ARMOR_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Paladin Armor", 0, /obj/item/hardpoint/armor/paladin, VEHICLE_ARMOR_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Snowplow", 0, /obj/item/hardpoint/armor/snowplow, VEHICLE_ARMOR_AVAILABLE, VENDOR_ITEM_REGULAR),
+	else if(istype(V, /obj/vehicle/multitile/apc))
+		currently_retrieved_vehicles &= ~VEHICLE_RETRIEVED_APC
 
-				list("TREADS", 0, null, null, null),
-				list("Reinforced Treads", 0, /obj/item/hardpoint/locomotion/treads/robust, VEHICLE_TREADS_AVAILABLE, VENDOR_ITEM_REGULAR),
-				list("Treads", 0, /obj/item/hardpoint/locomotion/treads, VEHICLE_TREADS_AVAILABLE, VENDOR_ITEM_RECOMMENDED)
-			)
+	else if(istype(V, /obj/vehicle/multitile/van))
+		currently_retrieved_vehicles &= ~VEHICLE_RETRIEVED_TRUCKS
+
+//actual products population happens here
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/proc/update_products_list()
+	listed_products = list()
+
+	//------------TANK PARTS SECTION-----------------
+	if(currently_retrieved_vehicles & VEHICLE_RETRIEVED_TANK)
+		if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_PARTS)
+			listed_products += list(list("M34A2 Longstreet Tank loadout choice:", 0, null, null, null))
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_TURRET)
+				listed_products += list(
+					list("TURRET", 0, null, null, null),
+					list("M34A2-A Multipurpose Turret", 0, /obj/item/hardpoint/holder/tank_turret, CREWMEN_CAN_TAKE_TANK_TURRET, VENDOR_ITEM_MANDATORY)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_PRIMARY)
+				listed_products += list(
+					list("PRIMARY WEAPON", 0, null, null, null),
+					list("AC3-E Autocannon", 0, /obj/item/hardpoint/primary/autocannon, CREWMEN_CAN_TAKE_TANK_PRIMARY, VENDOR_ITEM_RECOMMENDED),
+					list("DRG-N Offensive Flamer Unit", 0, /obj/item/hardpoint/primary/flamer, CREWMEN_CAN_TAKE_TANK_PRIMARY, VENDOR_ITEM_REGULAR),
+					list("LTAA-AP Minigun", 0, /obj/item/hardpoint/primary/minigun, CREWMEN_CAN_TAKE_TANK_PRIMARY, VENDOR_ITEM_REGULAR),
+					list("LTB Cannon", 0, /obj/item/hardpoint/primary/cannon, CREWMEN_CAN_TAKE_TANK_PRIMARY, VENDOR_ITEM_REGULAR)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_SECONDARY)
+				listed_products += list(
+					list("SECONDARY WEAPON", 0, null, null, null),
+					list("M92T Grenade Launcher", 0, /obj/item/hardpoint/secondary/grenade_launcher, CREWMEN_CAN_TAKE_TANK_SECONDARY, VENDOR_ITEM_REGULAR),
+					list("M56 Cupola", 0, /obj/item/hardpoint/secondary/m56cupola, CREWMEN_CAN_TAKE_TANK_SECONDARY, VENDOR_ITEM_RECOMMENDED),
+					list("LZR-N Flamer Unit", 0, /obj/item/hardpoint/secondary/small_flamer, CREWMEN_CAN_TAKE_TANK_SECONDARY, VENDOR_ITEM_REGULAR),
+					list("TOW Launcher", 0, /obj/item/hardpoint/secondary/towlauncher, CREWMEN_CAN_TAKE_TANK_SECONDARY, VENDOR_ITEM_REGULAR)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_SUPPORT)
+				listed_products += list(
+					list("SUPPORT MODULE", 0, null, null, null),
+					list("Artillery Module", 0, /obj/item/hardpoint/support/artillery_module, CREWMEN_CAN_TAKE_TANK_SUPPORT, VENDOR_ITEM_REGULAR),
+					list("Integrated Weapons Sensor Array", 0, /obj/item/hardpoint/support/weapons_sensor, CREWMEN_CAN_TAKE_TANK_SUPPORT, VENDOR_ITEM_REGULAR),
+					list("Overdrive Enhancer", 0, /obj/item/hardpoint/support/overdrive_enhancer, CREWMEN_CAN_TAKE_TANK_SUPPORT, VENDOR_ITEM_RECOMMENDED)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_ARMOR)
+				listed_products += list(
+					list("ARMOR", 0, null, null, null),
+					list("Ballistic Armor", 0, /obj/item/hardpoint/armor/ballistic, CREWMEN_CAN_TAKE_TANK_ARMOR, VENDOR_ITEM_RECOMMENDED),
+					list("Caustic Armor", 0, /obj/item/hardpoint/armor/caustic, CREWMEN_CAN_TAKE_TANK_ARMOR, VENDOR_ITEM_REGULAR),
+					list("Concussive Armor", 0, /obj/item/hardpoint/armor/concussive, CREWMEN_CAN_TAKE_TANK_ARMOR, VENDOR_ITEM_REGULAR),
+					list("Paladin Armor", 0, /obj/item/hardpoint/armor/paladin, CREWMEN_CAN_TAKE_TANK_ARMOR, VENDOR_ITEM_REGULAR),
+					list("Snowplow", 0, /obj/item/hardpoint/armor/snowplow, CREWMEN_CAN_TAKE_TANK_ARMOR, VENDOR_ITEM_REGULAR),
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TANK_TREADS)
+				listed_products += list(
+					list("TREADS", 0, null, null, null),
+					list("Robus-Treads", 0, /obj/item/hardpoint/locomotion/treads/robust, CREWMEN_CAN_TAKE_TANK_TREADS, VENDOR_ITEM_REGULAR),
+					list("Treads", 0, /obj/item/hardpoint/locomotion/treads, CREWMEN_CAN_TAKE_TANK_TREADS, VENDOR_ITEM_RECOMMENDED)
+				)
 		else
-			listed_products = list(
-				list("[selected_vehicle] SPARE PARTS SELECTION:", 0, null, null, null),
+			listed_products += list(
+				list("M34A2 Longstreet Tank spare modules and ammunition:", 0, null, null, null),
 
-				list("INTEGRAL PARTS", 0, null, null, null),
+				list("TURRET", 0, null, null, null),
 				list("M34A2-A Multipurpose Turret", 500, /obj/item/hardpoint/holder/tank_turret, null, VENDOR_ITEM_REGULAR),
-
-				list("SUPPORT AMMUNITION", 0, null, null, null),
-				list("Turret Smoke Screen Magazine", 50, /obj/item/ammo_magazine/hardpoint/turret_smoke, null, VENDOR_ITEM_REGULAR),
 
 				list("PRIMARY WEAPON", 0, null, null, null),
 				list("AC3-E Autocannon", 200, /obj/item/hardpoint/primary/autocannon, null, VENDOR_ITEM_REGULAR),
 				list("DRG-N Offensive Flamer Unit", 200, /obj/item/hardpoint/primary/flamer, null, VENDOR_ITEM_REGULAR),
 				list("LTAA-AP Minigun", 200, /obj/item/hardpoint/primary/minigun, null, VENDOR_ITEM_REGULAR),
-				list("LTB Cannon", 400, /obj/item/hardpoint/primary/cannon, null, VENDOR_ITEM_RECOMMENDED),
+				list("LTB Cannon", 400, /obj/item/hardpoint/primary/cannon, null, VENDOR_ITEM_REGULAR),
 
 				list("PRIMARY AMMUNITION", 0, null, null, null),
 				list("AC3-E Autocannon Magazine", 100, /obj/item/ammo_magazine/hardpoint/ace_autocannon, null, VENDOR_ITEM_REGULAR),
@@ -128,6 +197,9 @@
 				list("Integrated Weapons Sensor Array", 200, /obj/item/hardpoint/support/weapons_sensor, null, VENDOR_ITEM_REGULAR),
 				list("Overdrive Enhancer", 200, /obj/item/hardpoint/support/overdrive_enhancer, null, VENDOR_ITEM_REGULAR),
 
+				list("SUPPORT AMMUNITION", 0, null, null, null),
+				list("Turret Smoke Screen Magazine", 50, /obj/item/ammo_magazine/hardpoint/turret_smoke, null, VENDOR_ITEM_REGULAR),
+
 				list("ARMOR", 0, null, null, null),
 				list("Ballistic Armor", 300, /obj/item/hardpoint/armor/ballistic, null, VENDOR_ITEM_REGULAR),
 				list("Caustic Armor", 300, /obj/item/hardpoint/armor/caustic, null, VENDOR_ITEM_REGULAR),
@@ -140,38 +212,53 @@
 				list("Treads", 200, /obj/item/hardpoint/locomotion/treads, null, VENDOR_ITEM_REGULAR)
 			)
 
-	else if(selected_vehicle == "APC")
-		if(available_categories)
-			listed_products = list(
-				list("[selected_vehicle] STARTING KIT SELECTION:", 0, null, null, null),
+	//------------TANK PARTS SECTION END-----------------
 
-				list("PRIMARY WEAPON", 0, null, null, null),
-				list("PARS-159 Boyars Dualcannon", 0, /obj/effect/essentials_set/apc/dualcannon, VEHICLE_PRIMARY_AVAILABLE, VENDOR_ITEM_MANDATORY),
 
-				list("SECONDARY WEAPON", 0, null, null, null),
-				list("RE-RE700 Frontal Cannon", 0, /obj/effect/essentials_set/apc/frontalcannon, VEHICLE_SECONDARY_AVAILABLE, VENDOR_ITEM_MANDATORY),
+	//------------APC PARTS SECTION-----------------
+	if(currently_retrieved_vehicles & (VEHICLE_RETRIEVED_APC|VEHICLE_RETRIEVED_APC_MED|VEHICLE_RETRIEVED_APC_CMD))
+		if(available_loadout_categories & CREWMEN_CAN_TAKE_APC_PARTS)
+			listed_products += list(list("M577 Armored Personnel Carrier loadout choice:", 0, null, null, null))
 
-				list("SUPPORT MODULE", 0, null, null, null),
-				list("M-97F Flare Launcher", 0, /obj/effect/essentials_set/apc/flarelauncher, VEHICLE_SUPPORT_AVAILABLE, VENDOR_ITEM_MANDATORY),
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_APC_PRIMARY)
+				listed_products += list(
+					list("PRIMARY WEAPON", 0, null, null, null),
+					list("PARS-159 Boyars Dualcannon", 0, /obj/item/hardpoint/primary/dualcannon, CREWMEN_CAN_TAKE_APC_PRIMARY, VENDOR_ITEM_MANDATORY)
+				)
 
-				list("WHEELS", 0, null, null, null),
-				list("APC Wheels", 0, /obj/item/hardpoint/locomotion/apc_wheels, VEHICLE_TREADS_AVAILABLE, VENDOR_ITEM_MANDATORY)
-			)
-		else		//APC stuff costs more to prevent 4000 points spent on shitton of ammunition
-			listed_products = list(
-				list("[selected_vehicle] SPARE PARTS SELECTION:", 0, null, null, null),
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_APC_SECONDARY)
+				listed_products += list(
+					list("SECONDARY WEAPON", 0, null, null, null),
+					list("RE-RE700 Frontal Cannon", 0, /obj/item/hardpoint/secondary/frontalcannon, CREWMEN_CAN_TAKE_APC_SECONDARY, VENDOR_ITEM_MANDATORY)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_APC_SUPPORT)
+				listed_products += list(
+					list("SUPPORT MODULE", 0, null, null, null),
+					list("M-97F Flare Launcher", 0, /obj/item/hardpoint/support/flare_launcher, CREWMEN_CAN_TAKE_APC_SUPPORT, VENDOR_ITEM_MANDATORY)
+				)
+
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_APC_WHEELS)
+				listed_products += list(
+					list("WHEELS", 0, null, null, null),
+					list("APC Wheels", 0, /obj/item/hardpoint/locomotion/apc_wheels, CREWMEN_CAN_TAKE_APC_WHEELS, VENDOR_ITEM_MANDATORY)
+				)
+
+		else
+			listed_products += list(
+				list("M577 Armored Personnel Carrier spare modules and ammunition:", 0, null, null, null),
 
 				list("PRIMARY WEAPON", 0, null, null, null),
 				list("PARS-159 Boyars Dualcannon", 500, /obj/item/hardpoint/primary/dualcannon, null, VENDOR_ITEM_REGULAR),
 
 				list("PRIMARY AMMUNITION", 0, null, null, null),
-				list("PARS-159 Dualcannon Magazine", 150, /obj/item/ammo_magazine/hardpoint/ace_autocannon, null, VENDOR_ITEM_REGULAR),
+				list("PARS-159 Dualcannon Magazine", 100, /obj/item/ammo_magazine/hardpoint/ace_autocannon, null, VENDOR_ITEM_REGULAR),
 
 				list("SECONDARY WEAPON", 0, null, null, null),
 				list("RE-RE700 Frontal Cannon", 400, /obj/item/hardpoint/secondary/frontalcannon, null, VENDOR_ITEM_REGULAR),
 
 				list("SECONDARY AMMUNITION", 0, null, null, null),
-				list("RE-RE700 Frontal Cannon Magazine", 150, /obj/item/ammo_magazine/hardpoint/tank_glauncher, null, VENDOR_ITEM_REGULAR),
+				list("RE-RE700 Frontal Cannon Magazine", 100, /obj/item/ammo_magazine/hardpoint/tank_glauncher, null, VENDOR_ITEM_REGULAR),
 
 				list("SUPPORT MODULE", 0, null, null, null),
 				list("M-97F Flare Launcher", 300, /obj/item/hardpoint/support/flare_launcher, null, VENDOR_ITEM_REGULAR),
@@ -181,10 +268,44 @@
 
 				list("WHEELS", 0, null, null, null),
 				list("APC Wheels", 200, /obj/item/hardpoint/locomotion/apc_wheels, null, VENDOR_ITEM_REGULAR)
-			)
+				)
 
-	if(listed_products.len)
-		for(var/i in 1 to listed_products.len)
+	//------------APC PARTS SECTION-----------------
+
+	//------------TRUCKS PARTS SECTION-----------------
+	if(currently_retrieved_vehicles & VEHICLE_RETRIEVED_TRUCKS)
+		if(available_loadout_categories & CREWMEN_CAN_TAKE_TRUCK_WHEELS)
+			listed_products += list(list("USCM Truck loadout choice:", 0, null, null, null))
+			if(available_loadout_categories & CREWMEN_CAN_TAKE_TRUCK_WHEELS)
+				listed_products += list(
+					list("WHEELS", 0, null, null, null),
+					list("Truck Wheels Kit", 0, /obj/item/hardpoint/locomotion/van_wheels, CREWMEN_CAN_TAKE_TRUCK_WHEELS, VENDOR_ITEM_MANDATORY)
+				)
+
+		else
+			listed_products += list(
+				list("USCM Truck spare modules:", 0, null, null, null),
+
+				list("WHEELS", 0, null, null, null),
+				list("Truck Wheels Kit", 500, /obj/item/hardpoint/locomotion/van_wheels, null, VENDOR_ITEM_REGULAR)
+				)
+	//------------TRUCKS PARTS SECTION-----------------
+
+
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 0)
+
+	if(!ishuman(user))
+		return
+
+	if(!VehicleGearConsole)
+		set_global_vehicle_gear_vendor()
+
+	update_products_list()
+
+	var/list/display_list = list()
+
+	if(length(listed_products))
+		for(var/i in 1 to length(listed_products))
 			var/list/myprod = listed_products[i]
 			var/p_name = myprod[1]
 			var/p_cost = myprod[2]
@@ -193,17 +314,13 @@
 
 			var/prod_available = FALSE
 			var/avail_flag = myprod[4]
-			if(budget_points >= p_cost && (!avail_flag || available_categories & avail_flag))
+			if(budget_points >= p_cost && (!avail_flag || available_loadout_categories & avail_flag))
 				prod_available = TRUE
 
 			//place in main list, name, cost, available or not, color.
 			display_list += list(list("prod_index" = i, "prod_name" = p_name, "prod_available" = prod_available, "prod_color" = myprod[5]))
 	else
-		display_list = list(list("prod_index" = 1, "prod_name" = "No vehicle has been selected yet.", "prod_available" = FALSE, "prod_color" = null))
-
-	if(supply_controller.tank_points)		//we steal points from supply_controller, meh-he-he. Solely to be able to modify amount of points in vendor if needed by just changing one var.
-		budget_points = supply_controller.tank_points
-		supply_controller.tank_points = 0
+		display_list = list(list("prod_index" = 1, "prod_name" = "No vehicles have been retrieved yet.", "prod_available" = FALSE, "prod_color" = null))
 
 	var/list/data = list(
 		"vendor_name" = name,
@@ -221,44 +338,99 @@
 		ui.open()
 		ui.set_auto_update(0)
 
+/obj/structure/machinery/cm_vending/gear/vehicle_crew/Topic(href, href_list)
+	. = ..()
+	if(.)
+		return
+	if(inoperable())
+		return
+	if(usr.is_mob_incapacitated())
+		return
+
+	if(in_range(src, usr) && isturf(loc) && ishuman(usr))
+		usr.set_interaction(src)
+		if (href_list["vend"])
+
+			if(stat & IN_USE)
+				return
+
+			var/mob/living/carbon/human/H = usr
+
+			if(!allowed(H))
+				to_chat(H, SPAN_WARNING("Access denied."))
+				vend_fail()
+				return
+
+			var/obj/item/card/id/I = H.wear_id
+			if(!istype(I)) //not wearing an ID
+				to_chat(H, SPAN_WARNING("Access denied. No ID card detected"))
+				vend_fail()
+				return
+
+			if(I.registered_name != H.real_name)
+				to_chat(H, SPAN_WARNING("Wrong ID card owner detected."))
+				vend_fail()
+				return
+
+			if(LAZYLEN(vendor_role) && !vendor_role.Find(I.rank))
+				to_chat(H, SPAN_WARNING("This machine isn't for you."))
+				vend_fail()
+				return
+
+			var/turf/T = get_appropriate_vend_turf(H)
+
+			if(T.contents.len > 25)
+				to_chat(H, SPAN_WARNING("The floor is too cluttered, make some space."))
+				vend_fail()
+				return
+
+			var/idx=text2num(href_list["vend"])
+			var/list/L = listed_products[idx]
+
+			if(available_loadout_categories)
+				if(!(available_loadout_categories & L[4]))
+					to_chat(usr, SPAN_WARNING("Module from this category is already taken."))
+					vend_fail()
+					return
+				available_loadout_categories &= ~L[4]
+			else
+				if(!handle_points(H, L))
+					vend_fail()
+					return
+
+			INVOKE_ASYNC(GLOBAL_PROC, .proc/vend_succesfully, L, H, T)
+
+		add_fingerprint(usr)
+		ui_interact(usr) //updates the nanoUI window
+
 /obj/structure/machinery/cm_vending/gear/vehicle_crew/handle_points(var/mob/living/carbon/human/H, var/list/L)
-	. = TRUE
-	if(available_categories)
-		if(!(available_categories & L[4]))
-			to_chat(usr, SPAN_WARNING("Module from this category is already taken."))
-			vend_fail()
-			return FALSE
-		available_categories &= ~L[4]
+	if(budget_points < L[2])
+		to_chat(H, SPAN_WARNING("Not enough points."))
+		return FALSE
 	else
-		if(budget_points < L[2])
-			to_chat(H, SPAN_WARNING("Not enough points."))
-			vend_fail()
-			return FALSE
 		budget_points -= L[2]
+		return TRUE
 
-/obj/structure/machinery/cm_vending/gear/vehicle_crew/get_appropriate_vend_turf(var/mob/living/carbon/human/H)
-	var/turf/T = get_turf(src)
-	T = get_step(T, SOUTH)
-	return T
 
+//this is here just to remove putting vehicle module in hand
 /obj/structure/machinery/cm_vending/gear/vehicle_crew/vend_succesfully(var/list/L, var/mob/living/carbon/human/H, var/turf/T)
 	if(stat & IN_USE)
 		return
 
 	stat |= IN_USE
-	if(LAZYLEN(L))
+	if(LAZYLEN(L))	//making sure it's not empty
 		if(vend_delay)
 			overlays.Cut()
 			icon_state = "[initial(icon_state)]_vend"
 			if(vend_sound)
-				playsound(loc, vend_sound, 75, 1, 2)	//heard only near vendor
+				playsound(loc, vend_sound, 25, 1, 2)	//heard only near vendor
 			sleep(vend_delay)
 		var/prod_type = L[3]
 		new prod_type(T)
 		vending_stat_bump(prod_type, src.type)
 	else
 		to_chat(H, SPAN_WARNING("ERROR: L is missing. Please report this to admins."))
-		sleep(5)
+		sleep(15)
 
 	stat &= ~IN_USE
 	update_icon()
@@ -333,8 +505,8 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 		list("VP78 Pistol", 0, /obj/item/weapon/gun/pistol/vp78, MARINE_CAN_BUY_ATTACHMENT, VENDOR_ITEM_REGULAR),
 
 		list("BELT (CHOOSE 1)", 0, null, null, null),
-		list("G8-A General Utility Pouch", 0, /obj/item/storage/backpack/general_belt, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
-		list("M103 Vehicle-Ammo Rig", 0, /obj/item/storage/belt/tank, MARINE_CAN_BUY_BELT, VENDOR_ITEM_RECOMMENDED),
+		list("G8-A General Utility Pouch", 0, /obj/item/storage/sparepouch, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
+		list("M103 Vehicle-Ammo Rig", 0, /obj/item/storage/belt/tank, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
 		list("M276 Ammo Load Rig", 0, /obj/item/storage/belt/marine, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
 		list("M276 General Pistol Holster Rig", 0, /obj/item/storage/belt/gun/m4a3, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
 		list("M276 M39 Holster Rig", 0, /obj/item/storage/large_holster/m39, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
@@ -344,21 +516,20 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 		list("M276 Toolbelt Rig (Full)", 0, /obj/item/storage/belt/utility/full, MARINE_CAN_BUY_BELT, VENDOR_ITEM_REGULAR),
 
 		list("POUCHES (CHOOSE 2)", 0, null, null, null),
-		list("First-Aid Pouch (Full)", 0, /obj/item/storage/pouch/firstaid/full, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_RECOMMENDED),
+		list("Firstaid Pouch (Injectors)", 0, /obj/item/storage/pouch/firstaid/full, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_RECOMMENDED),
+		list("Firstaid Pouch (Pills)", 0, /obj/item/storage/pouch/firstaid/pills, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_RECOMMENDED),
 		list("Flare Pouch (Full)", 0, /obj/item/storage/pouch/flare/full, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
 		list("Large General Pouch", 0, /obj/item/storage/pouch/general/large, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
 		list("Sling Pouch", 0, /obj/item/storage/pouch/sling, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
 		list("Large Pistol Magazine Pouch", 0, /obj/item/storage/pouch/magazine/pistol/large, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
-		list("Magazine Pouch", 0, /obj/item/storage/pouch/magazine, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
 		list("Sidearm Pouch", 0, /obj/item/storage/pouch/pistol, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_REGULAR),
 		list("Tools Pouch (Full)", 0, /obj/item/storage/pouch/tools/tank, (MARINE_CAN_BUY_R_POUCH|MARINE_CAN_BUY_L_POUCH), VENDOR_ITEM_RECOMMENDED),
 
 		list("ACCESSORIES (CHOOSE 1)", 0, null, null, null),
 		list("Brown Webbing Vest", 0, /obj/item/clothing/accessory/storage/black_vest/brown_vest, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_RECOMMENDED),
 		list("Black Webbing Vest", 0, /obj/item/clothing/accessory/storage/black_vest, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_REGULAR),
-		list("Shoulder Holster", 0, /obj/item/clothing/accessory/storage/holster, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_REGULAR),
+		list("Shoulder Holster", 0, /obj/item/clothing/accessory/holster, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_REGULAR),
 		list("Webbing", 0, /obj/item/clothing/accessory/storage/webbing, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_REGULAR),
-		list("Drop Pouch", 0, /obj/item/clothing/accessory/storage/droppouch, MARINE_CAN_BUY_ACCESSORY, VENDOR_ITEM_REGULAR),
 
 		list("WELDING PROTECTION (CHOOSE 1)", 0, null, null, null),
 		list("Welding Goggles", 0, /obj/item/clothing/glasses/welding, MARINE_CAN_BUY_GLASSES, VENDOR_ITEM_REGULAR),
@@ -393,11 +564,13 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 		list("M44 Heavy Speed Loader (.44)", 10, /obj/item/ammo_magazine/revolver/heavy, null, VENDOR_ITEM_REGULAR),
 
 		list("UTILITIES", 0, null, null, null),
+		list("Binoculars", 5, /obj/item/device/binoculars, null, VENDOR_ITEM_REGULAR),
+		list("Range Finder", 10, /obj/item/device/binoculars/range, null, VENDOR_ITEM_REGULAR),
 		list("Fire Extinguisher (Portable)", 5, /obj/item/tool/extinguisher/mini, null, VENDOR_ITEM_REGULAR),
 		list("Fuel Tank Strap Pouch", 5, /obj/item/storage/pouch/flamertank, null, VENDOR_ITEM_REGULAR),
 		list("Large Magazine Pouch", 15, /obj/item/storage/pouch/magazine/large, null, VENDOR_ITEM_REGULAR),
 		list("Motion Detector", 15, /obj/item/device/motiondetector, null, VENDOR_ITEM_REGULAR),
-		list("Plastic Explosive", 10, /obj/item/explosive/plastic, null, VENDOR_ITEM_REGULAR),
+		list("Plastic Explosive", 10, /obj/item/explosive/plastic, null, VENDOR_ITEM_RECOMMENDED),
 	))
 
 //MARINE_CAN_BUY_SHOES MARINE_CAN_BUY_UNIFORM currently not used
@@ -420,7 +593,6 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
 		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
 		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
-		/obj/item/ammo_magazine/hardpoint/ltb_cannon,
 		/obj/item/ammo_magazine/hardpoint/ltb_cannon
 	)
 
@@ -435,7 +607,7 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 	spawned_gear_list = list(
 		/obj/item/hardpoint/primary/flamer,
 		/obj/item/ammo_magazine/hardpoint/primary_flamer,
-		/obj/item/ammo_magazine/hardpoint/primary_flamer,
+		/obj/item/ammo_magazine/hardpoint/primary_flamer
 	)
 
 /obj/effect/essentials_set/tank/autocannon
@@ -450,6 +622,7 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 /obj/effect/essentials_set/tank/tankflamer
 	spawned_gear_list = list(
 		/obj/item/hardpoint/secondary/small_flamer,
+		/obj/item/ammo_magazine/hardpoint/secondary_flamer,
 		/obj/item/ammo_magazine/hardpoint/secondary_flamer
 	)
 
@@ -463,6 +636,7 @@ GLOBAL_LIST_INIT(cm_vending_clothing_vehicle_crew, list(
 /obj/effect/essentials_set/tank/m56cupola
 	spawned_gear_list = list(
 		/obj/item/hardpoint/secondary/m56cupola,
+		/obj/item/ammo_magazine/hardpoint/m56_cupola,
 		/obj/item/ammo_magazine/hardpoint/m56_cupola
 	)
 

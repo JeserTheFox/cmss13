@@ -70,3 +70,19 @@
 	supply_controller.shoppinglist += O
 
 	return TRUE
+
+
+	var/obj/structure/machinery/computer/supplycomp/vehicle/vehicle_asrs = VehicleElevatorConsole
+	var/obj/structure/machinery/cm_vending/gear/vehicle_crew/vehicle_parts_vendor = VehicleGearConsole
+
+	if(!vehicle_asrs || !vehicle_parts_vendor)
+		to_world("#ERROR#, Vehicle ASRS console or Vehicle Parts Delivery System is missing, refunding tech points.")
+		var/datum/techtree/T = GET_TREE(TREE_MARINE)
+		T.add_points(required_points)
+		return
+
+	for(var/datum/vehicle_order/VO in vehicle_asrs.vehicles_orders)
+		if(VO.name == "M34A2 Longstreet Light Tank")
+			VO.unlocked = TRUE
+
+	vehicle_parts_vendor.budget_points += 1000

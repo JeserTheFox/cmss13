@@ -434,3 +434,9 @@
 // Checks whether the xeno can build a thick structure regardless of hive weeds
 #define COMSIG_XENO_THICK_RESIN_BYPASS "xeno_thick_resin_bypass"
 	#define COMPONENT_THICK_BYPASS (1<<0)
+
+
+//from vehicle ASRS console in code/game/vehicle_supply_elevator.dm
+#define COMSIG_GLOB_VEHICLE_ORDERED "!vehicle_ordered"
+//from vehicle ASRS console in code/game/vehicle_supply_elevator.dm
+#define COMSIG_GLOB_VEHICLE_REFUNDED "!vehicle_refunded"

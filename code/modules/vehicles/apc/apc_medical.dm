@@ -1,7 +1,7 @@
 
 /obj/vehicle/multitile/apc/medical
-	name = "M577-MED Armored Personnel Carrier"
-	desc = "A medical modification of the M577 Armored Personnel Carrier. An armored transport with four big wheels. Has compact surgery theater set up inside and stores a significant amount of medical supplies. Entrances on the sides."
+	name = "\improper M577-MED Armored Personnel Carrier"
+	desc = "A medical modification of the M577 Armored Personnel Carrier. Has compact surgery theater set up inside and stores a significant amount of medical supplies. Entrances on the sides."
 
 	icon_state = "apc_base_med"
 

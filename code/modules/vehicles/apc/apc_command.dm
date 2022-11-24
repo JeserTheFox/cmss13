@@ -1,7 +1,7 @@
 
 /obj/vehicle/multitile/apc/command
-	name = "M577-CMD Armored Personnel Carrier"
-	desc = "A modification of the M577 Armored Personnel Carrier designed to act as a field commander vehicle. An armored transport with four big wheels. Has inbuilt sensor tower and a field command station installed inside. Entrances on the sides."
+	name = "\improper M577-CMD Armored Personnel Carrier"
+	desc = "A modification of the M577 Armored Personnel Carrier designed to act as a field commander vehicle. Has inbuilt sensor tower and a field command station installed inside. Entrances on the sides."
 
 	icon_state = "apc_base_com"
 
