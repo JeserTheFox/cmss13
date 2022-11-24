@@ -2060,6 +2060,7 @@
 #include "code\modules\vehicles\hardpoints\secondary\grenade_launcher.dm"
 #include "code\modules\vehicles\hardpoints\secondary\secondary.dm"
 #include "code\modules\vehicles\hardpoints\secondary\tow.dm"
+#include "code\modules\vehicles\hardpoints\special\commander_turret.dm"
 #include "code\modules\vehicles\hardpoints\special\firing_port_weapon.dm"
 #include "code\modules\vehicles\hardpoints\special\special.dm"
 #include "code\modules\vehicles\hardpoints\support\artillery.dm"

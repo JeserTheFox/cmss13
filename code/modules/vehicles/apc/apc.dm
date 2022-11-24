@@ -154,6 +154,27 @@ GLOBAL_LIST_EMPTY(command_apc_list)
 		if(camera_int)
 			camera_int.c_tag = camera.c_tag + " interior"
 
+/obj/vehicle/multitile/apc/handle_click(var/mob/living/user, var/atom/A, var/list/mods)
+
+	. = ..()
+
+	if(seat == VEHICLE_SUPPORT_GUNNER_ONE || seat == VEHICLE_SUPPORT_GUNNER_TWO)
+		if(mods["shift"])
+			A.examine(user)
+			return
+		if(mods["middle"] || mods["alt"] || mods["ctrl"])
+			return
+
+		var/obj/item/hardpoint/HP = active_hp[seat]
+		if(!HP)
+			to_chat(user, SPAN_WARNING("Please select an active hardpoint first."))
+			return
+
+		if(!HP.can_activate(user, A))
+			return
+
+		HP.activate(user, A)
+
 /*
 ** PRESETS SPAWNERS
 */

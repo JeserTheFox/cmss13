@@ -21,12 +21,14 @@
 
 	seats = list(
 		VEHICLE_DRIVER = null,
-		VEHICLE_GUNNER = null
+		VEHICLE_GUNNER = null,
+		VEHICLE_SUPPORT_COMMANDER = null
 	)
 
 	active_hp = list(
 		VEHICLE_DRIVER = null,
-		VEHICLE_GUNNER = null
+		VEHICLE_GUNNER = null,
+		VEHICLE_SUPPORT_COMMANDER = null
 	)
 
 /obj/vehicle/multitile/apc/command/Initialize()
@@ -62,15 +64,16 @@
 	add_verb(M.client, list(
 		/obj/vehicle/multitile/proc/get_status_info,
 		/obj/vehicle/multitile/proc/open_controls_guide,
-		/obj/vehicle/multitile/proc/name_vehicle,
 	))
 	if(seat == VEHICLE_DRIVER)
 		add_verb(M.client, list(
+			/obj/vehicle/multitile/proc/name_vehicle,
 			/obj/vehicle/multitile/proc/toggle_door_lock,
 			/obj/vehicle/multitile/proc/activate_horn,
 		))
 	else if(seat == VEHICLE_GUNNER)
 		add_verb(M.client, list(
+			/obj/vehicle/multitile/proc/name_vehicle,
 			/obj/vehicle/multitile/proc/switch_hardpoint,
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
@@ -82,15 +85,16 @@
 	remove_verb(M.client, list(
 		/obj/vehicle/multitile/proc/get_status_info,
 		/obj/vehicle/multitile/proc/open_controls_guide,
-		/obj/vehicle/multitile/proc/name_vehicle,
 	))
 	if(seat == VEHICLE_DRIVER)
 		remove_verb(M.client, list(
+			/obj/vehicle/multitile/proc/name_vehicle,
 			/obj/vehicle/multitile/proc/toggle_door_lock,
 			/obj/vehicle/multitile/proc/activate_horn,
 		))
 	else if(seat == VEHICLE_GUNNER)
 		remove_verb(M.client, list(
+			/obj/vehicle/multitile/proc/name_vehicle,
 			/obj/vehicle/multitile/proc/switch_hardpoint,
 			/obj/vehicle/multitile/proc/cycle_hardpoint,
 			/obj/vehicle/multitile/proc/toggle_shift_click,
@@ -107,6 +111,57 @@
 		camera.c_tag = "#[rand(1,100)] M777 CMD APC"
 		if(camera_int)
 			camera_int.c_tag = camera.c_tag + " interior"
+
+//Called when players try to move vehicle
+//Another wrapper for try_move()
+/obj/vehicle/multitile/apc/command/relaymove(var/mob/user, var/direction)
+	if(user == seats[VEHICLE_DRIVER])
+		return ..()
+
+	if(user != seats[VEHICLE_SUPPORT_COMMANDER])
+		return FALSE
+
+	var/obj/item/hardpoint/special/commander_turret/CT = locate() in hardpoints
+	if(!CT)
+		return FALSE
+
+	if(direction == reverse_dir[CT.dir] || direction == CT.dir)
+		return FALSE
+
+	CT.user_rotation(user, turning_angle(CT.dir, direction))
+	update_icon()
+
+	return TRUE
+
+/obj/vehicle/multitile/apc/command/handle_click(var/mob/living/user, var/atom/A, var/list/mods)
+
+	. = ..()
+
+	if(seat == VEHICLE_SUPPORT_COMMANDER)
+		if(mods["shift"])
+			A.examine(user)
+			return
+
+		if(mods["middle"])
+
+			return
+
+		if(mods["alt"])
+			return
+
+		if(mods["ctrl"])
+			return
+
+		var/obj/item/hardpoint/HP = active_hp[seat]
+		if(!HP)
+			to_chat(user, SPAN_WARNING("Please select an active hardpoint first."))
+			return
+
+		if(!HP.can_activate(user, A))
+			return
+
+		HP.activate(user, A)
+
 
 //With techwebs disabled, disabling these until later.
 /*

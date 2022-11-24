@@ -1,4 +1,6 @@
-//regular vehicle seats for general vehicles.
+//This file contains multitile vehicles chair seats.
+
+//-------------------Regular vehicle seats for general vehicles------------------
 /obj/structure/bed/chair/comfy/vehicle
 	name = "seat"
 
@@ -66,6 +68,8 @@
 /obj/structure/bed/chair/comfy/vehicle/relaymove(mob/user, direction)
 	vehicle.relaymove(user, direction)
 
+//-------------------Driver seat------------------
+
 // Driver's seat
 /obj/structure/bed/chair/comfy/vehicle/driver
 	name = "driver's seat"
@@ -84,7 +88,8 @@
 
 	return ..()
 
-// Gunner seat
+//-------------------Gunner seat------------------
+
 /obj/structure/bed/chair/comfy/vehicle/gunner
 	name = "gunner's seat"
 	desc = "Comfortable seat for a gunner."
@@ -131,7 +136,7 @@
 		manual_unbuckle(X)
 		return
 
-//custom vehicle seats for armored vehicles
+//-------------------Armored vehicles versions of driver and gunner seats------------------
 //spawners located in interior_landmarks
 
 /obj/structure/bed/chair/comfy/vehicle/driver/armor
@@ -202,8 +207,8 @@
 	if(buckled_mob)
 		overlays += over_image
 
-
-//armored vehicles support gunner seat
+//-------------------Support Gunner seats------------------
+//used in transport APC for Firing Port Weapons.
 
 /obj/structure/bed/chair/comfy/vehicle/support_gunner
 	name = "left support gunner's seat"
@@ -261,38 +266,92 @@
 			M.client.pixel_x = 0
 			M.client.pixel_y = 0
 			M.reset_view()
-	else
-		if(M.stat == DEAD)
-			unbuckle()
-			return
-		vehicle.set_seated_mob(seat, M)
-		if(M && M.client)
-			M.client.change_view(8, vehicle)
+		return
 
-		if(vehicle.health < initial(vehicle.health) / 2)
-			to_chat(M, SPAN_WARNING("\The [vehicle] is too damaged to operate the Firing Port Weapon!"))
-			return
+	if(M.stat == DEAD)
+		unbuckle()
+		return
+	vehicle.set_seated_mob(seat, M)
+	if(M && M.client)
+		M.client.change_view(8, vehicle)
 
-		for(var/obj/item/hardpoint/special/firing_port_weapon/FPW in vehicle.hardpoints)
-			if(FPW.allowed_seat == seat)
-				vehicle.active_hp[seat] = FPW
-				var/msg = SPAN_NOTICE("You take the control of the M56 Firing Port Weapon.")
-				if(FPW.reloading)
-					msg += SPAN_WARNING("The M56 FPW is currently reloading. Wait [SPAN_HELPFUL((FPW.reload_time_started + FPW.reload_time - world.time) / 10)] seconds.")
-				else if(FPW.ammo)
-					msg += SPAN_NOTICE("Ammo: <b>[SPAN_HELPFUL(FPW.ammo.current_rounds)]/[SPAN_HELPFUL(FPW.ammo.max_rounds)]</b>")
-				else
-					msg += SPAN_DANGER("<b>ERROR. AMMO NOT FOUND, TELL A DEV!</b>")
-				msg = SPAN_INFO("Use 'Reload Firing Port Weapon' verb in 'Vehicle' tab to activate automated reload.")
-				to_chat(M, msg)
-				return
-		to_chat(M, SPAN_WARNING("ERROR. NO FPW FOUND, TELL A DEV!"))
+	if(vehicle.health < initial(vehicle.health) / 2)
+		to_chat(M, SPAN_WARNING("\The [vehicle] is too damaged to operate the Firing Port Weapon!"))
+		return
+
+	for(var/obj/item/hardpoint/special/firing_port_weapon/FPW in vehicle.hardpoints)
+		if(FPW.allowed_seat == seat)
+			vehicle.active_hp[seat] = FPW
+			var/msg = SPAN_NOTICE("You take the control of the M56 Firing Port Weapon.")
+			if(FPW.reloading)
+				msg += SPAN_WARNING("The M56 FPW is currently reloading. Wait [SPAN_HELPFUL((FPW.reload_time_started + FPW.reload_time - world.time) / 10)] seconds.")
+			else if(FPW.ammo)
+				msg += SPAN_NOTICE("Ammo: <b>[SPAN_HELPFUL(FPW.ammo.current_rounds)]/[SPAN_HELPFUL(FPW.ammo.max_rounds)]</b>")
+			else
+				msg += SPAN_DANGER("<b>ERROR. AMMO NOT FOUND, TELL A DEV!</b>")
+			msg = SPAN_INFO("Use 'Reload Firing Port Weapon' verb in 'Vehicle' tab to activate automated reload.")
+			to_chat(M, msg)
+			return
+	to_chat(M, SPAN_WARNING("ERROR. NO FPW FOUND, TELL A DEV!"))
 
 /obj/structure/bed/chair/comfy/vehicle/support_gunner/second
 	name = "right support gunner's seat"
 	seat = VEHICLE_SUPPORT_GUNNER_TWO
 
-//ARMORED VEHICLES PASSENGER SEATS
+
+//------------------CMD APC Command staff seat------------------
+
+/obj/structure/bed/chair/comfy/vehicle/support_commander
+	name = "commander's seat"
+	desc = "Military-grade seat for an officer."
+	seat = VEHICLE_SUPPORT_COMMANDER
+
+	required_skill = SKILL_VEHICLE_DEFAULT
+
+/obj/structure/bed/chair/comfy/vehicle/support_commander/handle_afterbuckle(var/mob/M)
+
+	if(!vehicle)
+		return
+
+	if(QDELETED(buckled_mob))
+		vehicle.set_seated_mob(seat, null)
+		M.unset_interaction()
+		if(M.client)
+			M.client.change_view(world_view_size, vehicle)
+			M.client.pixel_x = 0
+			M.client.pixel_y = 0
+			M.reset_view()
+		return
+	if(M.stat == DEAD)
+		unbuckle()
+		return
+	vehicle.set_seated_mob(seat, M)
+	if(M && M.client)
+		M.client.change_view(8, vehicle)
+
+	if(vehicle.health < initial(vehicle.health) / 2)
+		to_chat(M, SPAN_WARNING("\The [vehicle] is too damaged to operate the commander turret!"))
+		return
+
+	var/obj/item/hardpoint/special/commander_turret/CT locate in vehicle.hardpoints
+	vehicle.active_hp[seat] = CT
+	to_chat(M, SPAN_NOTICE("You take control of the commander turret.\nCurrent laser mode set to [SPAN_HELPFUL(mode)].\nTracking ID for CAS: [SPAN_HELPFUL(tracking_id)].")))
+
+	switch(CT.dir)
+		if(NORTH)
+			user.client.pixel_x = 0
+			user.client.pixel_y = view_tile_offset * 32
+		if(SOUTH)
+			user.client.pixel_x = 0
+			user.client.pixel_y = -1 * view_tile_offset * 32
+		if(EAST)
+			user.client.pixel_x = view_tile_offset * 32
+			user.client.pixel_y = 0
+		if(WEST)
+			user.client.pixel_x = -1 * view_tile_offset * 32
+			user.client.pixel_y = 0
+
+//--------------------ARMORED VEHICLES PASSENGER SEATS-------------------------
 //Unique feature - you can put two seats on same tile with different pixel_offsets, humans will be buckled with respective offsets
 //and only when both seats taken, seats will be made dense and, therefore, tile will become unpassible
 
